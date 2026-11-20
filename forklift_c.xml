@@ -1,0 +1,186 @@
+<mujoco model="NVIDIA ForkliftC">
+  <option timestep="0.002" integrator="implicitfast" />
+  <default>
+    <joint damping="0.5" />
+    <geom friction="1 0.005 0.0001" />
+    <default class="frontwheel">
+      <geom type="cylinder" size="0.325 0.135" euler="90 0 0" mass="30" />
+    </default>
+    <default class="rearwheel">
+      <geom type="cylinder" size="0.255 0.11" euler="90 0 0" mass="20" />
+    </default>
+  </default>
+  <worldbody>
+    <geom name="floor" type="plane" size="8 8 0.1" />
+    <body name="chassis" pos="0 0 0.001">
+      <freejoint />
+      <body pos="0.269 0.522 0.325">
+        <joint name="front_left" axis="0 1 0" />
+        <geom class="frontwheel" group="3" contype="2" conaffinity="1" />
+        <geom type="mesh" mesh="SM_Forklift_C01_Wheel02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      </body>
+      <body pos="0.269 -0.522 0.325">
+        <joint name="front_right" axis="0 1 0" />
+        <geom class="frontwheel" group="3" contype="2" conaffinity="1" />
+        <geom type="mesh" mesh="SM_Forklift_C01_Wheel03_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      </body>
+      <body pos="-1.383 0.57 0.255">
+        <joint name="steer_left" axis="0 0 1" range="-45 45" />
+        <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05" />
+        <body>
+          <joint name="rear_left" axis="0 1 0" />
+          <geom class="rearwheel" group="3" contype="2" conaffinity="1" />
+          <geom type="mesh" mesh="SM_Forklift_C01_Wheel01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+        </body>
+        <geom type="mesh" mesh="SM_Forklift_C01_RearAxleWheelRotator02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      </body>
+      <body pos="-1.383 -0.57 0.255">
+        <joint name="steer_right" axis="0 0 1" range="-45 45" />
+        <inertial pos="0 0 0" mass="5" diaginertia="0.05 0.05 0.05" />
+        <body>
+          <joint name="rear_right" axis="0 1 0" />
+          <geom class="rearwheel" group="3" contype="2" conaffinity="1" />
+          <geom type="mesh" mesh="SM_Forklift_C01_Wheel04_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+        </body>
+        <geom type="mesh" mesh="SM_Forklift_C01_RearAxleWheelRotator01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      </body>
+      <body name="lift" pos="0 0 -0.06">
+        <joint name="lift_height" type="slide" axis="0 0 1" range="0 2" />
+        <inertial pos="0.85 0 0.65" mass="80" diaginertia="26 30 9" />
+        <geom type="mesh" mesh="SM_Forklift_C01_MastStage05_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+        <geom type="mesh" mesh="SM_Forklift_C01_Fork02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+        <geom type="mesh" mesh="SM_Forklift_C01_Fork01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+        <geom type="mesh" mesh="SM_Forklift_C01_MastStage04_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+        <geom name="left_fork" type="box" pos="1.3295 0.29325 0.122" size="0.519500008 0.05 0.015" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="ForkHeelLeft" type="box" pos="0.7805 0.29325 0.357" size="0.0279999995 0.05 0.238500004" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="right_fork" type="box" pos="1.3295 -0.29325 0.122" size="0.519500008 0.05 0.015" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="ForkHeelRight" type="box" pos="0.7805 -0.29325 0.357" size="0.0279999995 0.05 0.238500004" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="CarriageLower" type="box" pos="0.714 0 0.194" size="0.063499999 0.542999992 0.03" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="CarriageUpper" type="box" pos="0.721 0 0.519" size="0.0725 0.542999992 0.0375" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="LoadGuardSideLeft" type="box" pos="0.773 0.533 0.683" size="0.035 0.0129999995 0.507999992" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="LoadGuardSideRight" type="box" pos="0.773 -0.533 0.683" size="0.035 0.0129999995 0.507999992" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="LoadGuardTop" type="box" pos="0.773 0 1.19" size="0.035 0.532999992 0.0125" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="LoadGuardMiddle" type="box" pos="0.773 0 0.746" size="0.03 0.532999992 0.00899999976" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+        <geom name="LoadGuardInnerLeft" type="box" pos="0.7887 0.076216 0.9653" size="0.029749999 0.00419999987 0.221000004" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      </body>
+      <inertial pos="-0.58 0 0.62" mass="1400" diaginertia="300 820 720" />
+      <geom type="mesh" mesh="SM_Forklift_C01_Body01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.92 0.57 0.09 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_Body02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_RearAxle02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_RearAxleLever02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_RearAxle01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_RearAxleLever01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_OperatorChairHandle02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_OperatorChairHead_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_OperatorChairHandle01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_GearStick01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_GearStick02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_GearStick03_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_SteeringWheel_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_Mirror_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_Glass_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.65 0.82 0.9 0.22" />
+      <geom type="mesh" mesh="SM_Forklift_C01_Lights_01" contype="0" conaffinity="0" group="2" mass="0" rgba="1 0.94 0.77 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStage02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStage01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStage03_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastForcerBig_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel10_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel11_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastChain02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel08_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel04_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel09_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forkliftt_C01_Forcer_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastForcer_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel05_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel06_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastChain01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel01_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_Hose_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel02_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel03_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom type="mesh" mesh="SM_Forklift_C01_MastStageWheel07_01" contype="0" conaffinity="0" group="2" mass="0" rgba="0.18 0.20 0.22 1" />
+      <geom name="RearLowerCounterweight" type="box" pos="-1.7225 0 0.399" size="0.123500004 0.242000008 0.2175" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RearCounterweightShoulderLeft" type="box" pos="-1.759 0.32 0.399" size="0.065 0.05 0.2175" xyaxes="0.707106781 0.707106781 0 -0.707106781 0.707106781 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RearCounterweightShoulderRight" type="box" pos="-1.759 -0.32 0.399" size="0.065 0.05 0.2175" xyaxes="0.707106781 -0.707106781 0 0.707106781 0.707106781 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RearUpperCounterweight" type="box" pos="-1.4755 0 0.8175" size="0.355499992 0.52 0.2175" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="ChassisCore" type="box" pos="-0.364 0 0.432" size="0.655999985 0.37 0.227999992" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="LowerStepDeck" type="box" pos="-0.579 0 0.33" size="0.394000015 0.534000015 0.105" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="EngineHood" type="box" pos="-0.808 0 0.854" size="0.352000008 0.485 0.149499998" xyaxes="0.965925826 0 -0.258819045 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="Dashboard" type="box" pos="0.023 0 0.95" size="0.111499996 0.459500008 0.1825" xyaxes="0.945518576 0 0.325568154 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="FrontFenderTops" type="box" pos="0.205 0 0.705" size="0.221000004 0.562999992 0.0304999995" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="FuelTank" type="cylinder" pos="-1.465 -0.017 1.239" size="0.1675 0.345" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="SeatBack" type="box" pos="-0.927 0.044 1.328" size="0.059000001 0.216499996 0.222000008" xyaxes="0.978147601 0 0.207911691 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="CabinRearLeft" type="box" pos="-1.127 0.481 1.5715" size="0.035 0.0195000005 0.50884697" xyaxes="0.997352876 0 -0.0727134117 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="CabinFrontLeft" type="box" pos="-0.0275 0.481 1.4965" size="0.03 0.0195000005 0.612580185" xyaxes="0.95252834 0 0.304449932 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RoofSideLeft" type="box" pos="-0.622 0.481 2.083" size="0.502999992 0.020999999 0.030999999" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="CabinRearRight" type="box" pos="-1.127 -0.481 1.5715" size="0.035 0.0195000005 0.50884697" xyaxes="0.997352876 0 -0.0727134117 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="CabinFrontRight" type="box" pos="-0.0275 -0.481 1.4965" size="0.03 0.0195000005 0.612580185" xyaxes="0.95252834 0 0.304449932 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RoofSideRight" type="box" pos="-0.622 -0.481 2.083" size="0.502999992 0.020999999 0.030999999" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RoofRear" type="box" pos="-1.095 0 2.083" size="0.035999999 0.481500015 0.0304999995" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="RoofFront" type="box" pos="-0.162 0 2.083" size="0.0370000005 0.481500015 0.0304999995" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="MastRailLeft" type="box" pos="0.527 0.247 1.157" size="0.131000004 0.0830000019 1.00699997" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="MastRailRight" type="box" pos="0.527 -0.247 1.157" size="0.131000004 0.0830000019 1.00699997" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="MastTopCrossbar" type="box" pos="0.48 0 2.137" size="0.179500008 0.397000008 0.0275" xyaxes="1 0 0 0 1 0" contype="2" conaffinity="1" group="3" />
+      <geom name="ChassisUnderHood" type="box" pos="-1.00774519 0 0.666584936" size="0.29 0.545999985 0.165490379" xyaxes="0.866025404 0 -0.5 0 1 0" contype="2" conaffinity="1" group="3" />
+    </body>
+    <light pos="1 -3 6" dir="-0.1 0.4 -1" diffuse="0.85 0.85 0.85" ambient="0.25 0.25 0.25" />
+  </worldbody>
+  <actuator>
+    <velocity name="drive_left" joint="front_left" kv="200" />
+    <velocity name="drive_right" joint="front_right" kv="200" />
+    <position name="turn_left" joint="steer_left" kp="5000" kv="160" />
+    <position name="turn_right" joint="steer_right" kp="5000" kv="160" />
+    <position name="lift_target" joint="lift_height" kp="100000" kv="5000" ctrlrange="0 2" />
+  </actuator>
+  <statistic center="0.25 0 1" extent="3.5" />
+  <asset>
+    <mesh name="SM_Forklift_C01_Body01_01" file="forklift_c_meshes/SM_Forklift_C01_Body01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Body02_01" file="forklift_c_meshes/SM_Forklift_C01_Body02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_RearAxle02_01" file="forklift_c_meshes/SM_Forklift_C01_RearAxle02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_RearAxleLever02_01" file="forklift_c_meshes/SM_Forklift_C01_RearAxleLever02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_RearAxle01_01" file="forklift_c_meshes/SM_Forklift_C01_RearAxle01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_RearAxleLever01_01" file="forklift_c_meshes/SM_Forklift_C01_RearAxleLever01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_OperatorChairHandle02_01" file="forklift_c_meshes/SM_Forklift_C01_OperatorChairHandle02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_OperatorChairHead_01" file="forklift_c_meshes/SM_Forklift_C01_OperatorChairHead_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_OperatorChairHandle01_01" file="forklift_c_meshes/SM_Forklift_C01_OperatorChairHandle01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_GearStick01_01" file="forklift_c_meshes/SM_Forklift_C01_GearStick01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_GearStick02_01" file="forklift_c_meshes/SM_Forklift_C01_GearStick02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_GearStick03_01" file="forklift_c_meshes/SM_Forklift_C01_GearStick03_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_SteeringWheel_01" file="forklift_c_meshes/SM_Forklift_C01_SteeringWheel_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Mirror_01" file="forklift_c_meshes/SM_Forklift_C01_Mirror_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Glass_01" file="forklift_c_meshes/SM_Forklift_C01_Glass_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Lights_01" file="forklift_c_meshes/SM_Forklift_C01_Lights_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStage02_01" file="forklift_c_meshes/SM_Forklift_C01_MastStage02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStage01_01" file="forklift_c_meshes/SM_Forklift_C01_MastStage01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStage03_01" file="forklift_c_meshes/SM_Forklift_C01_MastStage03_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastForcerBig_01" file="forklift_c_meshes/SM_Forklift_C01_MastForcerBig_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel10_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel10_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel11_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel11_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastChain02_01" file="forklift_c_meshes/SM_Forklift_C01_MastChain02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel08_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel08_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel04_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel04_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel09_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel09_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forkliftt_C01_Forcer_01" file="forklift_c_meshes/SM_Forkliftt_C01_Forcer_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastForcer_01" file="forklift_c_meshes/SM_Forklift_C01_MastForcer_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel05_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel05_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel06_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel06_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastChain01_01" file="forklift_c_meshes/SM_Forklift_C01_MastChain01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel01_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Hose_01" file="forklift_c_meshes/SM_Forklift_C01_Hose_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel02_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel03_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel03_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStageWheel07_01" file="forklift_c_meshes/SM_Forklift_C01_MastStageWheel07_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStage05_01" file="forklift_c_meshes/SM_Forklift_C01_MastStage05_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Fork02_01" file="forklift_c_meshes/SM_Forklift_C01_Fork02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Fork01_01" file="forklift_c_meshes/SM_Forklift_C01_Fork01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_MastStage04_01" file="forklift_c_meshes/SM_Forklift_C01_MastStage04_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Wheel02_01" file="forklift_c_meshes/SM_Forklift_C01_Wheel02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Wheel01_01" file="forklift_c_meshes/SM_Forklift_C01_Wheel01_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Wheel03_01" file="forklift_c_meshes/SM_Forklift_C01_Wheel03_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_Wheel04_01" file="forklift_c_meshes/SM_Forklift_C01_Wheel04_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_RearAxleWheelRotator02_01" file="forklift_c_meshes/SM_Forklift_C01_RearAxleWheelRotator02_01.msh" maxhullvert="32" />
+    <mesh name="SM_Forklift_C01_RearAxleWheelRotator01_01" file="forklift_c_meshes/SM_Forklift_C01_RearAxleWheelRotator01_01.msh" maxhullvert="32" />
+  </asset>
+  <include file="rackable_pallet.xml" />
+</mujoco>
