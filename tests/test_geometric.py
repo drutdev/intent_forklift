@@ -1,5 +1,6 @@
 import unittest
 from dataclasses import replace
+from unittest.mock import patch
 
 import numpy as np
 
@@ -9,6 +10,7 @@ from pallet_engagement.geometric import (
     joined_curve,
     pursuit,
     timed_path,
+    tracking_curvature,
 )
 from pallet_engagement.guard import Supervisor
 from pallet_engagement.messages import Command, ControlContext, Estimate
@@ -133,3 +135,33 @@ class GeometricChecks(unittest.TestCase):
         self.assertEqual(
             Supervisor().decide(ctx, proposal).terminal, "planning_failure"
         )
+
+    def test_infeasible_plan_waits_for_stationary_estimate_before_abort(self):
+        method = load("geometric")
+        method.reset(())
+        ctx = self.ctx
+        with (
+            patch.object(method, "forward", return_value=None) as forward,
+            patch.object(method, "plan_retreat", return_value=None),
+        ):
+            first = method.propose(ctx)
+            self.assertEqual(first.status, "hold")
+            self.assertEqual(first.command.speed, 0)
+            stamp = replace(ctx.stamp, time_ns=500_000_000)
+            method.propose(replace(ctx, stamp=stamp))
+            self.assertEqual(forward.call_count, 1)
+            stamp = replace(ctx.stamp, time_ns=8_000_000_000)
+            self.assertEqual(method.propose(replace(ctx, stamp=stamp)).status, "failed")
+
+    def test_fork_tip_yaw_feedback_damps_both_travel_directions(self):
+        ctx = self.ctx
+        for sign in (1, -1):
+            rows = np.array(
+                [[0, 0, 0, 0], [sign, 0, 0, 0], [2 * sign, 0, 0, 0]], dtype=float
+            )
+            path = timed_path(rows, 0, ctx, 0.1, 0.1, 0.1, reverse=sign < 0)
+            for yaw in (-0.02, 0.02):
+                curvature = tracking_curvature(
+                    path, 0, (0, 0, yaw), sign * 0.1, sign, 1.5, ctx
+                )
+                self.assertLess(sign * 0.1 * curvature * yaw, 0)

@@ -105,11 +105,17 @@ def tracking_curvature(path, progress, pose, speed, sign, lookahead, ctx):
         * np.array([cos(path.pose[-1, 2]), sin(path.pose[-1, 2])])
     )
     reference = np.array([np.interp(progress, path.s, axis) for axis in path.pose.T])
-    # Preview the planned bend by one measured servo time constant. Subtract
-    # nominal pursuit to avoid counting the turn twice on curved reference paths.
-    preview = progress + abs(speed) * ctx.limits.steering_response_s
-    feedforward = np.interp(preview, path.s, path.curvature)
+    # Invert the first-order steering lag using the spatial curvature derivative.
+    # Subtract nominal pursuit to avoid counting the planned turn twice.
+    current = np.interp(progress, path.s, path.curvature)
+    slope = np.interp(progress, path.s, np.gradient(path.curvature, path.s))
+    feedforward = current + abs(speed) * ctx.limits.steering_response_s * slope
     correction = pursuit(pose, point) - pursuit(reference, point)
+    # Account for the fork-tip lever arm. Signed damping also applies in reverse.
+    yaw_error = np.arctan2(
+        np.sin(pose[2] - reference[2]), np.cos(pose[2] - reference[2])
+    )
+    correction -= sign * 2 * ctx.geometry.tip_x * yaw_error / (look * look)
     limit = curvature_limit(ctx.geometry, ctx.limits)
     return float(np.clip(feedforward + correction, -limit, limit))
 
@@ -135,8 +141,15 @@ def preview_path(path, ctx, guard, lookahead):
     poses = [state.pose]
     if path.time[-1] > 120:
         return False
-    for t in np.arange(0, path.time[-1] + 0.5, 0.10):
-        progress = np.interp(t, path.time, path.s)
+    progress = 0.0
+    for t in np.arange(0, path.time[-1] + 2.0, 0.10):
+        near = np.argmin(np.linalg.norm(path.pose[:, :2] - state.pose[:2], axis=1))
+        heading = path.pose[near, 2]
+        offset = np.subtract(state.pose[:2], path.pose[near, :2])
+        progress = min(
+            path.s[-1],
+            max(progress, path.s[near] + offset @ [cos(heading), sin(heading)]),
+        )
         speed = np.interp(t + 0.05, path.time, path.v)
         curvature = tracking_curvature(
             path, progress, state.pose, state.speed, 1, lookahead, ctx
@@ -175,6 +188,8 @@ class Method:
         self.paused = False
         self.launch_ns = 0
         self.events = set()
+        self.plan_failure_since = None
+        self.next_plan_ns = 0
 
     def observe(self, message):
         pass  # The runtime fuses observations into the timestamp-aligned context.
@@ -210,7 +225,7 @@ class Method:
         diag["rejected"] = tuple(rejected)
 
     def plan_retreat(self, start, ctx, guard, diag):
-        for distance in (0.65, 1.25, 2.0, 2.75):
+        for distance in (0.30, 0.65, 1.25, 2.0, 2.75):
             poses = np.array(
                 [
                     compose(start[:3], (-d, 0, 0))
@@ -279,6 +294,8 @@ class Method:
             self.events.clear()
             self.anchor = None
             self.force_retreat = False
+            self.plan_failure_since = None
+            self.next_plan_ns = 0
         if ctx.estimate.last_capture_ns <= self.wait_capture:
             return reply("hold", "reacquiring")
         if not self.acquired:
@@ -326,6 +343,8 @@ class Method:
                 if guard.guide(self.authorization) <= 0:
                     return reply("failed", "withdrawal_clearance")
                 return reply("retry", "awaiting_authorization", self.authorization)
+            if t < self.next_plan_ns:
+                return reply("hold", "planning_reacquisition")
             self.plan += 1
             planning_guard = (
                 guard.nominal()
@@ -337,10 +356,25 @@ class Method:
             if self.path is None:
                 if abs(state.speed) >= ctx.criteria.still_speed:
                     return reply("hold", "stop_before_retreat")
+                if self.plan_failure_since is None:
+                    self.plan_failure_since = t
+                if (
+                    not self.force_retreat
+                    and np.any(ctx.estimate.covariance)
+                    and t - self.plan_failure_since < 2_000_000_000
+                ):
+                    self.next_plan_ns = t + 1_000_000_000
+                    return reply("hold", "planning_reacquisition")
                 authorization = self.plan_retreat(start, ctx, guard, diag)
                 if authorization:
                     return reply("retry", "signed_connection", authorization)
+                if self.plan_failure_since is None:
+                    self.plan_failure_since = t
+                self.next_plan_ns = t + 1_000_000_000
+                if t - self.plan_failure_since < 8_000_000_000:
+                    return reply("hold", "planning_reacquisition")
                 return reply("failed", "no_safe_continuation")
+            self.plan_failure_since = None
             self.progress, self.clock = 0.0, t
             self.launch_ns = t
             diag["curvature"] = tuple(self.path.curvature)
