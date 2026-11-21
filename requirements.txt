@@ -1,1 +1,4 @@
 mujoco==4.0.1
+numpy==2.5.5
+rerun-sdk==0.43.2
+imageio-ffmpeg==0.8.1
