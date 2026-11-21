@@ -31,6 +31,7 @@ REGISTRY = {
     name: Registration(f"pallet_engagement.{name}", "Method", False)
     for name in ("geometric", "search_ilqr", "rl")
 }
+REGISTRY["geometric"] = Registration("pallet_engagement.geometric", "Method", True)
 REGISTRY["hold"] = Registration(__name__, "Hold", True)
 
 

@@ -323,6 +323,7 @@ class StackChecks(unittest.TestCase):
         self.assertLess(decision.clearance, 0)
 
     def test_registration(self):
-        for name in ("geometric", "search_ilqr", "rl"):
+        self.assertEqual(load("geometric").period_ns, 20_000_000)
+        for name in ("search_ilqr", "rl"):
             with self.assertRaisesRegex(ValueError, "implementation pending"):
                 load(name)
