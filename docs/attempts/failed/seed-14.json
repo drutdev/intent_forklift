@@ -1,0 +1,172 @@
+{
+  "source_recording": "recordings/robustness-20261122/random-14",
+  "config": {
+    "method": "geometric",
+    "mode": "deterministic",
+    "seed": 14,
+    "duration": 90,
+    "scenario": {
+      "distance": 3.6619666377782227,
+      "lateral": -0.13905333316574342,
+      "heading": 0.14153873622455104,
+      "pallet_yaw": 2.2626930691349214
+    },
+    "sensors": {
+      "dropout": 0.1,
+      "noise_scale": 1.0,
+      "outage_index": 5,
+      "outage_count": 0,
+      "scale_walk": 0.001,
+      "heading_walk": 0.001,
+      "encoder_noise": 0.0001,
+      "yaw_noise": 0.0001,
+      "slip_std_per_sqrt_m": [
+        0.006,
+        0.005,
+        0.004
+      ]
+    },
+    "limits": {
+      "delay_ns": 150000000,
+      "delay_uncertainty_ns": 0,
+      "speed": 0.45,
+      "recovery_speed": 0.4,
+      "steer": 0.7853981633974483,
+      "steer_rate": 0.5235987755982988,
+      "target_steer_rate": 0.2792526803190927,
+      "drive_gain": 800.0,
+      "steering_damping": 3000.0,
+      "drive_headroom": 0.01,
+      "speed_response_s": 0.105,
+      "steering_response_s": 0.92,
+      "uncertainty_speed_cap": false,
+      "target_accel": 0.5,
+      "brake": 0.3,
+      "stop_buffer": 0.025,
+      "tracking": 0.002,
+      "sigma": 2.0,
+      "approach_safety_factor": 1.5
+    },
+    "criteria": {
+      "depth": 0.6,
+      "target_allowance": 0.025,
+      "lateral": 0.03,
+      "yaw": 0.03490658503988659,
+      "still_speed": 0.01,
+      "still_yaw_rate": 0.01,
+      "settle_ns": 200000000,
+      "fresh_ns": 600000000,
+      "acquire_ns": 3000000000,
+      "retries": 1
+    },
+    "drift_variance_per_s": [
+      1e-07,
+      1e-07,
+      1e-08
+    ],
+    "gate_squared": 16.27,
+    "method_settings": [],
+    "moving_detection_gain": 1.0,
+    "odometry_covariance_scale": 1.0
+  },
+  "outcome": {
+    "episode": "geometric-14-fd8641e6ac84b840",
+    "time_ns": 90000000000,
+    "success": false,
+    "reason": "episode_timeout",
+    "first_contact": null,
+    "metrics": {
+      "depth": 0.6006446516745836,
+      "lateral": -0.04494980549546823,
+      "yaw": -0.0645913798470934,
+      "inside": true,
+      "settled": true,
+      "peak_true_speed": 0.22189762026821155,
+      "peak_steer_rate": 0.3403750538950446,
+      "minimum_positive_separation": null,
+      "floor_contact_samples": 359243,
+      "gate_or_time_rejections": 0,
+      "estimates_within_two_sigma": 4402,
+      "estimates_scored": 4501,
+      "outage_start_distance": null,
+      "outage_estimates_scored": 480,
+      "outage_within_two_sigma": 480,
+      "recording_drops": 16858,
+      "recording_error": null
+    },
+    "timing": {
+      "wall_ns": 63031143282,
+      "method": {
+        "count": 4500,
+        "p50_ns": 2602680,
+        "p95_ns": 10377809,
+        "max_ns": 156857347
+      },
+      "compute_over_period": 4,
+      "control": {
+        "count": 4501,
+        "p50_ns": 9187660,
+        "p95_ns": 29904021,
+        "max_ns": 172100705
+      },
+      "control_lateness": {
+        "count": 0
+      },
+      "missed_control_deadlines": 0,
+      "late_results": 0,
+      "expired_proposal_ticks": 0,
+      "worker_pending": false
+    },
+    "recording_complete": false,
+    "overrides": {
+      "clearance": 87,
+      "estimated_completion_pending": 1697
+    },
+    "retries": 0,
+    "execution_mode": "deterministic",
+    "schema": 1,
+    "frame": "pallet"
+  },
+  "coverage": {
+    "saved_poses": 1726,
+    "first_time_s": 0.0,
+    "last_time_s": 89.88000000000001,
+    "maximum_gap_s": 1.480000000000004
+  },
+  "render": {
+    "playback_speed": 2,
+    "fps": 25.0,
+    "duration_s": 47.0,
+    "size": [
+      1280,
+      608
+    ],
+    "gaps": "hold last saved pose; marked in video"
+  },
+  "sha256": {
+    "video": "57211589aa471c2efe5cc9d5fca678cb29a1b2d36484f346e8d5b24eca10c148",
+    "states": "d7ba424aea509ac93736a632dbfad456697173acf255840c19f946dcd411e03e",
+    "source_files": {
+      "pallet_engagement/__init__.py": "800e71b0ba617363c40f507139d649d5ed23d55b94584bce995148f1337a5887",
+      "pallet_engagement/__main__.py": "8f12979fab90234b9d4e980d0430ca508e231f109fe51a320f4f35a8d0d05fbc",
+      "pallet_engagement/cc.py": "9dcd5451697ae2be1d19f6d746949cbde99a6db6b7e10697b098f25dcf1c5109",
+      "pallet_engagement/config.py": "76038e79c96ca2ca35bbeed62414ebd065657ee8a0cbffe2e99c49911d9c296d",
+      "pallet_engagement/estimation.py": "cb3a4debfa8aeb641c0eca7f4e6a7ac9b1497556680455f429d59fbe06391555",
+      "pallet_engagement/evaluation.py": "9080c4a9e889105e01b964447e933c3441f7db8f99b83577ee67abb723a90763",
+      "pallet_engagement/frames.py": "13ce9300f059fba91aa4d9e50d85462822458fdf5e841f0ea3c733a00fbe1692",
+      "pallet_engagement/geometric.py": "f34f9b920544d4146228dde59d6714894079243eea6f97a35eff41df5d151664",
+      "pallet_engagement/guard.py": "f731f0728e05e351348ab2097900522a37a144d62b13885a03c0a1e9e4c46a1c",
+      "pallet_engagement/messages.py": "9718ac5dcf261012478d939e8c3926b3014a963da8cee52857467ed1d37fd09f",
+      "pallet_engagement/methods.py": "1664cd2dd6a1b0abca0d812af9467305fa111d6e5fcc5a8f5ba20adb25cc8fcd",
+      "pallet_engagement/plant.py": "621eb59e0ec485bf08673f0b1ad8ab27e7ef1b1bf0d90e8d1e9ca2686dbc3eb2",
+      "pallet_engagement/prediction.py": "5acbd2fb3a9999f89c5a54b388532f475a6d04c8550f587e97bcc2968b2c3c68",
+      "pallet_engagement/recording.py": "c0ffcfaa44038259115aeea57262c4e537f613a10b7517d6a643fdb60582f030",
+      "pallet_engagement/runtime.py": "584dc41b7d270c121973e92a9ffd380bd9b9d2e626ac1ce6c286015a4dd608d2",
+      "pallet_engagement/steering.py": "f70adec64a1e86a7781fc1d6d5758f04a7faa00cc9bffed0ff35a507d4e510d6",
+      "pallet_engagement/visualization.py": "9547e39ab5e03f44aa961b04b4788973db1d0d62a12e9b94f5dd15eae57cd7aa",
+      "forklift_c.xml": "890d0679896c37e47c175b763e4fdc9389e1d87ef3146636427f6876dc6ff592",
+      "rackable_pallet.xml": "b45942855ab63f011221bbd386873deab5de375685d954bdf4d001ec254b01f3",
+      "uv.lock": "afaf9510511618b443e695d645f1e6f6e3ed09c87463cce7948036336b884046"
+    }
+  }
+}
