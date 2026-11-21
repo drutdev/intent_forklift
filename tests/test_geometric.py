@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import numpy as np
 
+from pallet_engagement.cc import connectors
 from pallet_engagement.config import CONTROL_NS, Config
 from pallet_engagement.frames import inverse
 from pallet_engagement.geometric import (
@@ -16,7 +17,7 @@ from pallet_engagement.guard import Supervisor
 from pallet_engagement.messages import Command, ControlContext, Estimate
 from pallet_engagement.methods import load
 from pallet_engagement.plant import Plant
-from pallet_engagement.steering import wheels
+from pallet_engagement.steering import curvature_limit, wheels
 
 
 class GeometricChecks(unittest.TestCase):
@@ -70,6 +71,31 @@ class GeometricChecks(unittest.TestCase):
             ctx.limits.target_steer_rate + 1e-9,
         )
 
+    def test_cc_speed_maps_both_wheels_and_lag_headroom(self):
+        ctx = self.ctx
+        start = (-6.0, -1.0, 0.35, 0.0)
+        limit = curvature_limit(ctx.geometry, ctx.limits)
+        rows, join, _ = next(
+            connectors(start, -0.955, (-2.78, -1.68), 0.85 * limit, 0.6)
+        )
+        path = timed_path(rows, join, ctx, 0.22, 0.10, 0)
+        self.assertTrue(np.all(path.v[1:-1] > 0))
+        angles = wheels(path.curvature, ctx.geometry)
+        slope = np.gradient(path.curvature, path.s)
+        compensated = wheels(
+            path.curvature + path.v * ctx.limits.steering_response_s * slope,
+            ctx.geometry,
+        )
+        self.assertLessEqual(abs(compensated).max(), ctx.limits.steer + 1e-10)
+        self.assertLessEqual(
+            (abs(np.diff(angles, axis=0)) / np.diff(path.time)[:, None]).max(),
+            ctx.limits.target_steer_rate,
+        )
+        self.assertLessEqual(abs(slope).max(), 0.601)
+        self.assertGreater(path.v[join], ctx.criteria.still_speed)
+        face = np.searchsorted(path.pose[:, 0], -ctx.geometry.tip_x)
+        self.assertGreater(path.v[face], ctx.criteria.still_speed)
+
     def test_reverse_pursuit_and_invalid_curve(self):
         for lateral in (-0.05, 0.05):
             point = np.array([-0.7, lateral])
@@ -107,6 +133,10 @@ class GeometricChecks(unittest.TestCase):
         method.reset(())
         proposal = method.propose(ctx)
         self.assertEqual(proposal.status, "retry")
+        self.assertAlmostEqual(method.retreat.s[-1], 2.5)
+        self.assertAlmostEqual(-method.retreat.v.min(), 0.4)
+        self.assertEqual(method.retreat.v[0], 0)
+        self.assertEqual(method.retreat.v[-1], 0)
         speeds = np.array(proposal.guide.samples)[:, 3]
         self.assertLess(speeds[0], 0)
         first_forward = np.flatnonzero(speeds > 0)[0]
@@ -153,6 +183,32 @@ class GeometricChecks(unittest.TestCase):
             stamp = replace(ctx.stamp, time_ns=8_000_000_000)
             self.assertEqual(method.propose(replace(ctx, stamp=stamp)).status, "failed")
 
+    def test_planning_wait_is_not_counted_as_a_new_path_stall(self):
+        ctx = self.ctx
+        origin = inverse(ctx.estimate.pose)
+        goal = ctx.criteria.depth + ctx.criteria.target_allowance - ctx.geometry.tip_x
+        rows = np.zeros((201, 4))
+        rows[:, 0] = np.linspace(origin[0], goal, len(rows))
+        path = timed_path(rows, 0, ctx, 0.1, 0.1, 0)
+        method = load("geometric")
+        method.reset(())
+        with (
+            patch.object(method, "forward", return_value=None),
+            patch.object(method, "plan_retreat", return_value=None),
+        ):
+            self.assertEqual(method.propose(ctx).status, "hold")
+        stamp = replace(ctx.stamp, time_ns=7_000_000_000)
+        ctx = replace(
+            ctx,
+            stamp=stamp,
+            estimate=replace(ctx.estimate, stamp=stamp, last_capture_ns=stamp.time_ns),
+        )
+        with patch.object(method, "forward", return_value=path):
+            self.assertEqual(method.propose(ctx).status, "drive")
+        stamp = replace(stamp, time_ns=stamp.time_ns + CONTROL_NS)
+        ctx = replace(ctx, stamp=stamp, estimate=replace(ctx.estimate, stamp=stamp))
+        self.assertEqual(method.propose(ctx).status, "drive")
+
     def test_fork_tip_yaw_feedback_damps_both_travel_directions(self):
         ctx = self.ctx
         for sign in (1, -1):
@@ -165,3 +221,17 @@ class GeometricChecks(unittest.TestCase):
                     path, 0, (0, 0, yaw), sign * 0.1, sign, 1.5, ctx
                 )
                 self.assertLess(sign * 0.1 * curvature * yaw, 0)
+
+    def test_proposal_covers_worker_jitter_and_expires_at_its_deadline(self):
+        ctx = self.ctx
+        method = load("geometric")
+        method.reset(())
+        proposal = method.propose(ctx)
+        self.assertEqual(proposal.status, "drive")
+        self.assertEqual(proposal.valid_until_ns - ctx.stamp.time_ns, 100_000_000)
+        delayed = replace(ctx, stamp=replace(ctx.stamp, time_ns=60_000_000))
+        self.assertGreater(Supervisor().decide(delayed, proposal).command.speed, 0)
+        expired = replace(ctx, stamp=replace(ctx.stamp, time_ns=100_000_000))
+        decision = Supervisor().decide(expired, proposal)
+        self.assertEqual(decision.reason, "expired_proposal")
+        self.assertEqual(decision.command.speed, 0)

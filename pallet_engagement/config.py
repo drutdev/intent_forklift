@@ -34,7 +34,7 @@ class Limits:
     delay_ns: int = 150_000_000
     delay_uncertainty_ns: int = 0
     speed: float = 0.45
-    recovery_speed: float = 0.10
+    recovery_speed: float = 0.40
     steer: float = radians(45)
     steer_rate: float = radians(30)
     target_steer_rate: float = radians(16)

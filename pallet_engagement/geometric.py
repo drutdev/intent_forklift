@@ -1,10 +1,11 @@
-"""A joined quintic and straight guide in pallet coordinates, tracked at 50 Hz."""
+"""Restricted CC approach and straight insertion in the pallet frame at 50 Hz."""
 
 from dataclasses import dataclass, replace
 from math import cos, sin, tan
 
 import numpy as np
 
+from .cc import connectors
 from .config import CONTROL_NS
 from .frames import compose
 from .guard import Clearance
@@ -28,11 +29,18 @@ def timed_path(rows, join, ctx, cruise, straight_speed, initial, reverse=False):
     s = np.r_[0, ds.cumsum()]
     angles = wheels(rows[:, 3], ctx.geometry)
     change = abs(np.diff(angles, axis=0)).max(axis=1)
-    cap = ctx.limits.target_steer_rate * ds / np.maximum(change, 1e-12)
+    cap = 0.65 * ctx.limits.target_steer_rate * ds / np.maximum(change, 1e-12)
     v = np.full(len(s), min(cruise, ctx.limits.speed - ctx.limits.drive_headroom))
     v[join:] = np.minimum(v[join:], straight_speed)
     v[:-1] = np.minimum(v[:-1], cap)
     v[1:] = np.minimum(v[1:], cap)
+    # Leave angle headroom for inverse-lag feedforward on each clothoid.
+    # Both Ackermann wheel maps must remain inside their angle bounds.
+    slope = np.gradient(rows[:, 3], s)
+    lag_cap = (curvature_limit(ctx.geometry, ctx.limits) - abs(rows[:, 3])) / np.maximum(
+        ctx.limits.steering_response_s * abs(slope), 1e-12
+    )
+    v = np.minimum(v, np.maximum(0., lag_cap))
     v[-1] = 0
     for i in reversed(range(len(ds))):
         v[i] = min(
@@ -48,6 +56,7 @@ def timed_path(rows, join, ctx, cruise, straight_speed, initial, reverse=False):
 
 
 def joined_curve(start, join_x, goal_x, a, b):
+    """Historical quintic reference for archived studies; unused by Method."""
     x, y, yaw, k = start
     tangent = np.array([cos(yaw), sin(yaw)])
     p = np.array([x, y])
@@ -96,7 +105,8 @@ def pursuit(pose, point):
 
 
 def tracking_curvature(path, progress, pose, speed, sign, lookahead, ctx):
-    look = lookahead + 0.9 * abs(speed)
+    straight = sign > 0 and progress >= path.s[path.join]
+    look = (min(lookahead, 0.8) if straight else lookahead) + 0.9 * abs(speed)
     target_s = min(path.s[-1], progress + look)
     point = np.array([np.interp(target_s, path.s, axis) for axis in path.pose[:, :2].T])
     point += (
@@ -115,7 +125,8 @@ def tracking_curvature(path, progress, pose, speed, sign, lookahead, ctx):
     yaw_error = np.arctan2(
         np.sin(pose[2] - reference[2]), np.cos(pose[2] - reference[2])
     )
-    correction -= sign * 2 * ctx.geometry.tip_x * yaw_error / (look * look)
+    yaw_gain = 0.5 if straight else 2.0
+    correction -= sign * yaw_gain * ctx.geometry.tip_x * yaw_error / (look * look)
     limit = curvature_limit(ctx.geometry, ctx.limits)
     return float(np.clip(feedforward + correction, -limit, limit))
 
@@ -158,11 +169,25 @@ def preview_path(path, ctx, guard, lookahead):
             state, Command(ctx.stamp, speed, curvature), 0.10, ctx.geometry, ctx.limits
         )
         poses.append(state.pose)
-    return guard.swept(poses) > 0
+        tip = state.pose[0] + ctx.geometry.tip_x * cos(state.pose[2])
+        if -0.12 < tip < 0.02:
+            distance = max(0., path.pose[-1, 0] - state.pose[0]) / max(
+                .1, cos(state.pose[2])
+            )
+            if guard.segment(state.pose, compose(state.pose, (distance, 0, 0))) < 0.006:
+                return False
+    return (
+        guard.swept(poses) > 0
+        and abs(state.pose[1] + ctx.geometry.tip_x * sin(state.pose[2])) < 0.006
+        and abs(state.pose[2]) < 0.008
+    )
 
 
 class Method:
     period_ns = CONTROL_NS
+    # Cover worker turnaround and supervisor jitter while every tick still
+    # rechecks freshness, remaining geometry, and the delayed stopping sweep.
+    proposal_validity_ns = 5 * CONTROL_NS
 
     def reset(self, settings):
         opts = dict(settings)
@@ -196,36 +221,35 @@ class Method:
 
     def forward(self, start, ctx, guard, initial, diag):
         goal = ctx.criteria.depth + ctx.criteria.target_allowance - ctx.geometry.tip_x
-        join_x = -self.join_distance - ctx.geometry.tip_x
-        length = np.hypot(join_x - start[0], start[1])
+        # Join bounds are engineering choices. Search up to the face, retaining
+        # a small outside reserve; the full tracking preview checks settling.
+        bounds = (-ctx.geometry.tip_x - max(1.2, self.join_distance),
+                  -ctx.geometry.tip_x - 0.10)
         candidates = []
         rejected = []
-        for aa, bb in ((1.0, 1.0), (0.8, 1.2), (1.2, 0.8), (1.2, 1.2), (0.8, 0.8)):
-            candidate = joined_curve(start, join_x, goal, aa * length, bb * length)
-            if candidate is None:
-                rejected.append("nonmonotone")
-                continue
-            rows, join = candidate
-            if abs(rows[:, 3]).max() > curvature_limit(ctx.geometry, ctx.limits):
-                rejected.append("steering")
-                continue
-            margin = guard.swept(rows[:, :3])
-            if margin <= 0:
-                rejected.append("clearance")
-                continue
-            path = timed_path(rows, join, ctx, self.cruise, self.straight, initial)
-            score = (path.time[-1], -margin)
-            candidates.append((score, path, (aa * length, bb * length)))
-        for _, path, tangents in sorted(candidates, key=lambda item: item[0]):
+        limit = 0.85 * curvature_limit(ctx.geometry, ctx.limits)
+        for sharpness in (0.15, 0.30, 0.60):
+            for rows, join, family in connectors(start, goal, bounds, limit, sharpness):
+                margin = guard.swept(rows[:, :3])
+                if margin <= 0:
+                    rejected.append("clearance")
+                    continue
+                path = timed_path(rows, join, ctx, self.cruise, self.straight, initial)
+                settling_distance = -rows[join, 0] - ctx.geometry.tip_x
+                score = path.time[-1] + 12 * max(0., .65 - settling_distance)
+                candidates.append(((score, -margin), path, family, sharpness))
+        for _, path, family, sharpness in sorted(candidates, key=lambda item: item[0]):
             if preview_path(path, ctx, guard, self.lookahead):
-                diag["tangents_m"] = tangents
+                diag["cc_family"] = family
+                diag["sharpness_per_m2"] = sharpness
+                diag["join_distance_m"] = -path.pose[path.join, 0] - ctx.geometry.tip_x
                 diag["rejected"] = tuple(rejected)
                 return path
             rejected.append("tracking_preview")
-        diag["rejected"] = tuple(rejected)
+        diag["rejected"] = tuple(rejected) or ("restricted_geometry",)
 
     def plan_retreat(self, start, ctx, guard, diag):
-        for distance in (0.30, 0.65, 1.25, 2.0, 2.75):
+        for distance in (2.5,):
             poses = np.array(
                 [
                     compose(start[:3], (-d, 0, 0))
@@ -241,7 +265,7 @@ class Method:
                     0,
                     ctx,
                     ctx.limits.recovery_speed,
-                    0.09,
+                    ctx.limits.recovery_speed,
                     0,
                     reverse=True,
                 )
@@ -272,7 +296,7 @@ class Method:
             self.previous = None
             return MotionProposal(
                 Command(ctx.stamp),
-                t + 2 * self.period_ns,
+                t + self.proposal_validity_ns,
                 status,
                 tuple(dict(diag, reason=reason).items()),
                 guide,
@@ -315,7 +339,7 @@ class Method:
         if (
             self.path is not None
             and not ctx.recovery
-            and t - self.last_motion > 2_500_000_000
+            and t - self.last_motion > 6_000_000_000
             and guard.origin[0] < goal - 0.025
             and t - ctx.estimate.last_capture_ns <= ctx.criteria.fresh_ns
         ):
@@ -377,6 +401,8 @@ class Method:
             self.plan_failure_since = None
             self.progress, self.clock = 0.0, t
             self.launch_ns = t
+            # Acquisition/planning time is not a stall of the new trajectory.
+            self.anchor, self.last_motion = guard.origin[:2], t
             diag["curvature"] = tuple(self.path.curvature)
             diag["wheel_angles"] = tuple(
                 map(tuple, wheels(self.path.curvature, ctx.geometry))
@@ -476,7 +502,7 @@ class Method:
         self.previous = command
         return MotionProposal(
             command,
-            t + 2 * self.period_ns,
+            t + self.proposal_validity_ns,
             "drive",
             tuple(diag.items()),
             guide,
