@@ -15,6 +15,8 @@ def measure(directory, join_distance):
         raise ValueError(f"incomplete recording in {directory}")
     geometry = manifest["geometry"]
     samples = []
+    active_join = 0.8 if join_distance is None else join_distance
+    previous_axle = previous_face = None
     speed = 0.0
     crossing = {}
     errors, margins, entry = [], [], []
@@ -32,19 +34,23 @@ def measure(directory, join_distance):
                 edge = (geometry["tip_y"] + geometry["half_width"]) * abs(sin(yaw))
                 # Require approach through each plane. A close start can already
                 # be beyond the join and move out again before a forward retry.
-                values = (axle_x + geometry["tip_x"] + join_distance, middle + edge)
-                if samples:
+                values = (axle_x + geometry["tip_x"] + active_join, middle + edge)
+                if previous_axle is not None:
+                    previous = (previous_axle + geometry["tip_x"] + active_join, previous_face)
                     for i, name in enumerate(("join", "face")):
-                        if samples[-1][3 + i] < 0 <= values[i]:
+                        if previous[i] < 0 <= values[i] and speed > 0:
                             crossing.setdefault(name, []).append(
                                 {"time_s": time, "feedback_mps": speed}
                             )
                 samples.append((time, speed, middle - edge, *values))
+                previous_axle, previous_face = axle_x, middle + edge
             elif row["kind"] == "decision":
                 if data["clearance"] is not None:
                     margins.append(data["clearance"])
             elif row["kind"] == "proposal":
                 diag = dict(data["diagnostics"])
+                if join_distance is None and "join_distance_m" in diag:
+                    active_join = diag["join_distance_m"]
                 if "cross_track_m" in diag:
                     errors.append(diag["cross_track_m"])
                 entry.append((time, diag.get("entry_margin_m", np.nan)))
@@ -83,7 +89,7 @@ def measure(directory, join_distance):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directories", nargs="+", type=Path)
-    parser.add_argument("--join-distance", type=float, default=0.8)
+    parser.add_argument("--join-distance", type=float, default=None)
     parser.add_argument("--plot", type=Path)
     args = parser.parse_args()
     results = {}

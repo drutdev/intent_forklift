@@ -160,7 +160,7 @@ An estimate carries its own state time and last accepted detection time. A dropo
 | Command delay | 150 ms | Within brief p. 3's 100-200 ms suggestion |
 | Per-wheel steering rate | 30 degrees per second | Brief p. 3 suggestion |
 | Engagement speed cap | 0.45 m/s | Engineering choice below the p. 3 suggestion |
-| Recovery speed cap | 0.10 m/s | Engineering choice |
+| Recovery speed cap | 0.40 m/s | Engineering choice for the fixed 2.50 m retreat |
 | Detection freshness threshold | 0.60 s | Engineering choice |
 | Standstill | Speed below 0.01 m/s and yaw rate below 0.01 rad/s for 0.20 s | Engineering choice |
 | Acquisition timeout, episode timeout, retry budget | 3 s, 60 s, one retry | Engineering choices |
@@ -171,8 +171,10 @@ The common supervisor checks every proposal and each interval between proposals.
 
 The runtime has two explicit execution modes.
 
-- `deterministic` pauses simulation time during computation. The geometric planner tests a finite set of curves and withdrawals. It measures wall time separately. Outcomes describe idealized compute availability.
+- `deterministic` pauses simulation time during computation. The geometric planner tests a finite set of continuous-curvature CSC and SC connectors and straight withdrawals. It measures wall time separately. Outcomes describe idealized compute availability.
 - `realtime` advances on wall-clock deadlines. Motion generation runs in a worker, while estimation and supervision remain responsive. Late results expire, and the runtime executes a previously checked stopping continuation.
+
+The CC method requests a bounded 100 ms proposal validity window while updating at 50 Hz. This allows worker turnaround and supervisor jitter. Each tick still rechecks the candidate and its delayed stop. Expiry is enforced against both the episode clock and realtime wall clock.
 
 Every result names its execution mode. Exact seeded replay is assessed in deterministic mode. Realtime evaluation reports scheduling and solver latency distributions. The two result sets carry separate summaries.
 
