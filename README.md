@@ -6,13 +6,23 @@ This repository runs a geometric pallet-engagement stack for a rear-steered fork
 
 ## Run an engagement
 
-From the repository root with Python 3.12 and venv support, create the environment and run a centered case with nominal sensing. Each recording directory must be new.
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) once. After cloning, run this command from the repository root:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pallet_engagement run --seed 8 --record recordings/my-geometric-run
+uv run --locked python -m pallet_engagement run --seed 8 --duration 90
 ```
+
+uv downloads Python 3.12.3 if needed, creates `.venv`, and installs the dependencies from `uv.lock`. No environment activation is required. The first run needs internet access. The command runs a centered case with nominal sensing and prints a JSON outcome. It runs without a graphical display.
+
+To save telemetry and joint states, use a new recording directory:
+
+```sh
+uv run --locked python -m pallet_engagement run --seed 8 --duration 90 --record recordings/my-geometric-run
+```
+
+Native viewers require a graphical display and working graphics drivers. Video export also requires an OpenGL backend. The commands below use EGL for headless video on Linux.
+
+`pyproject.toml` and `uv.lock` define the uv environment. `requirements.txt` remains available for pip users.
 
 The cleanup verification run for seed 8 completed in 23.62 simulated seconds. It reached a settled minimum fork-tip depth of 627.7 mm with both blades inside their pockets and zero pallet contact. Measured speed stayed positive through the approach join and pallet face. This single run does not establish reliability across the starting envelope. The [geometric design and measured results](DESIGN_GEOMETRIC.md) describe broader trials and failures.
 
@@ -23,12 +33,12 @@ The JSON outcome reports physical success, contact, terminal errors, timing, and
 `--pose` supplies fork-tip distance, lateral offset, heading error, and pallet yaw. Distances are in metres and angles are in radians. `--ideal` disables detector noise, random dropouts, and sensor drift. Physical dynamics, actuation delay, slew limits, and scoring remain active.
 
 ```sh
-.venv/bin/python -m pallet_engagement run --ideal
-.venv/bin/python -m pallet_engagement run --ideal --pose 3.2 .08 .04 .47
-.venv/bin/python -m pallet_engagement run --ideal --pose 3.2 -.08 -.04 -.47
-.venv/bin/python -m pallet_engagement run --ideal --pose .55 .06 0 .47
-.venv/bin/python -m pallet_engagement run --seed 8 --delay-uncertainty-ms 40
-.venv/bin/python -m pallet_engagement run --seed 8 --outage-index 70 --outage-count 24
+uv run --locked python -m pallet_engagement run --ideal
+uv run --locked python -m pallet_engagement run --ideal --pose 3.2 .08 .04 .47
+uv run --locked python -m pallet_engagement run --ideal --pose 3.2 -.08 -.04 -.47
+uv run --locked python -m pallet_engagement run --ideal --pose .55 .06 0 .47
+uv run --locked python -m pallet_engagement run --seed 8 --delay-uncertainty-ms 40
+uv run --locked python -m pallet_engagement run --seed 8 --outage-index 70 --outage-count 24
 ```
 
 The close start exercises authorized withdrawal and reacquisition. Recovery still needs a checked retreat and forward continuation. Acquisition, clearance, freshness, proposal expiry, and retry limits remain active.
@@ -36,12 +46,12 @@ The close start exercises authorized withdrawal and reacquisition. Recovery stil
 ## Inspect a recording
 
 ```sh
-.venv/bin/python tools/geometric_evidence.py recordings/my-geometric-run
-.venv/bin/python -m pallet_engagement replay recordings/my-geometric-run
-.venv/bin/rerun rrd verify recordings/my-geometric-run/trace.rrd
-.venv/bin/rerun recordings/my-geometric-run/trace.rrd
-.venv/bin/python -m pallet_engagement playback recordings/my-geometric-run
-MUJOCO_GL=egl .venv/bin/python -m pallet_engagement playback recordings/my-geometric-run --video recordings/my-geometric-run/scene.mp4
+uv run --locked python tools/geometric_evidence.py recordings/my-geometric-run
+uv run --locked python -m pallet_engagement replay recordings/my-geometric-run
+uv run --locked rerun rrd verify recordings/my-geometric-run/trace.rrd
+uv run --locked rerun recordings/my-geometric-run/trace.rrd
+uv run --locked python -m pallet_engagement playback recordings/my-geometric-run
+MUJOCO_GL=egl uv run --locked python -m pallet_engagement playback recordings/my-geometric-run --video recordings/my-geometric-run/scene.mp4
 ```
 
 The evidence command reconstructs pallet-plane crossings independently and pairs them with measured axle speed. Replay compares every archived estimate and covariance. Playback uses copied joint poses at 25 Hz and the terminal pose. On macOS, use MuJoCo's `mjpython` launcher for native playback.
@@ -51,15 +61,15 @@ Rerun shows the remaining joined path in green, the tracking prediction in orang
 Add `--live` to a recorded run to view telemetry during execution. On this Linux workstation, the Rerun viewer can use the X11 backend with an explicit window size.
 
 ```sh
-env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 .venv/bin/rerun --bind 127.0.0.1 --window-size 1280x800 recordings/my-geometric-run/trace.rrd
+env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 uv run --locked rerun --bind 127.0.0.1 --window-size 1280x800 recordings/my-geometric-run/trace.rrd
 ```
 
 ## Evaluate repeated runs
 
 ```sh
-.venv/bin/python -m pallet_engagement evaluate --suite comparison --seeds 0:6
-.venv/bin/python -m pallet_engagement evaluate --suite comparison --seeds 0:3 --outages 0 5 --paired-speed-cap
-.venv/bin/python -m pallet_engagement run --mode realtime --seed 8
+uv run --locked python -m pallet_engagement evaluate --suite comparison --seeds 0:6
+uv run --locked python -m pallet_engagement evaluate --suite comparison --seeds 0:3 --outages 0 5 --paired-speed-cap
+uv run --locked python -m pallet_engagement run --mode realtime --seed 8
 ```
 
 The seed range has an exclusive stop. Evaluation reports counts, Wilson 95% intervals, terminal reasons, and individual outcomes. The optional paired run applies a speed cap as uncertainty consumes clearance. Compare success, contact, completion time, and interventions on matched scenarios.
@@ -67,9 +77,9 @@ The seed range has an exclusive stop. Evaluation reports counts, Wilson 95% inte
 ## Run diagnostics and checks
 
 ```sh
-.venv/bin/python -m pallet_engagement run --method hold --duration 3 --record recordings/hold-check
-.venv/bin/python probe.py
-.venv/bin/python -m unittest discover -s tests -v
+uv run --locked python -m pallet_engagement run --method hold --duration 3 --record recordings/hold-check
+uv run --locked python probe.py
+uv run --locked python -m unittest discover -s tests -v
 ```
 
 The hold diagnostic should end with `episode_timeout`, `settled`, and `recording_complete`. The original probe checks steering direction, centered insertion to 600 mm, and contact at a deliberately misaligned 40 mm offset. The tests cover geometry, sensing, estimation, supervision, tracking, recovery, recording, and visualization.
@@ -77,7 +87,7 @@ The hold diagnostic should end with `episode_timeout`, `settled`, and `recording
 Open the bundled scene on a machine with a graphical display.
 
 ```sh
-.venv/bin/python -m mujoco.viewer --mjcf=forklift_c.xml
+uv run --locked python -m mujoco.viewer --mjcf=forklift_c.xml
 ```
 
 ## Design and recovery
