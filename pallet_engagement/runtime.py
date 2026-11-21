@@ -149,7 +149,7 @@ def run(cfg, directory=None, live=False):
             ),
         )
         if directory:
-            rec = Recorder(directory, manifest(cfg, plant, episode), live)
+            rec = Recorder(directory, manifest(cfg, plant, episode), live, model=plant.m)
         if cfg.mode == "realtime":
             context = mp.get_context("spawn")
             conn, child = context.Pipe()

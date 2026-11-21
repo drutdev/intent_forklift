@@ -13,6 +13,7 @@ import numpy as np
 from .config import Config, Criteria, Limits, Scenario, Sensors
 from .estimation import EKF
 from .messages import OdometryIncrement, PocketObservation, Stamp
+from .visualization import Scene3D
 
 
 def write_json(path, value):
@@ -60,12 +61,46 @@ def log_rerun(rr, stream, kind, v):
         elif v.get("diagnostics"):
             stream.log("solver/diagnostics", rr.TextLog(str(v["diagnostics"])))
         if kind == "proposal":
-            for name in ("guide", "rollout"):
-                if v.get(name):
+            goal_label = "Guide endpoint"
+            horizon_label = "Prediction horizon"
+            for name, label, color, width in (
+                (
+                    "guide",
+                    "Joined path",
+                    [70, 200, 90],
+                    4,
+                ),
+                (
+                    "rollout",
+                    "Tracking prediction",
+                    [255, 180, 30],
+                    2,
+                ),
+            ):
+                samples = (v.get(name) or {}).get("samples", [])
+                path = f"pallet/{name}"
+                if samples:
                     stream.log(
-                        f"pallet/{name}",
-                        rr.LineStrips2D([[s[:2] for s in v[name]["samples"]]]),
+                        path,
+                        rr.LineStrips2D(
+                            [[s[:2] for s in samples]],
+                            colors=color,
+                            radii=rr.Radius.ui_points(width),
+                            labels=label,
+                            draw_order=1 if name == "guide" else 2,
+                        ),
                     )
+                    stream.log(
+                        path + "/endpoint",
+                        rr.Points2D(
+                            [samples[-1][:2]],
+                            colors=color,
+                            radii=rr.Radius.ui_points(5),
+                            labels=goal_label if name == "guide" else horizon_label,
+                        ),
+                    )
+                else:
+                    stream.log(path, rr.Clear(recursive=True))
     elif kind == "odometry":
         scalar("odometry/curvature_disagreement", v["curvature_disagreement"])
     elif kind == "dropout":
@@ -84,6 +119,11 @@ def diagnostic_views():
     import rerun.blueprint as bp
 
     geometry = bp.Tabs(
+        bp.Spatial2DView(
+            origin="/pallet",
+            contents=["$origin/guide/**", "$origin/rollout/**"],
+            name="Guide and predicted motion",
+        ),
         bp.Spatial2DView(
             origin="/front_axle", name="Detections and estimate in axle frame"
         ),
@@ -111,11 +151,43 @@ def diagnostic_views():
         bp.TimeSeriesView(name="Detection age (s)", contents=["/detector/age_s"]),
         bp.TextLogView(name="Method and supervisor messages"),
     )
-    return bp.Blueprint(bp.Vertical(geometry, signals), collapse_panels=True)
+    scene = bp.Tabs(
+        bp.Spatial3DView(
+            origin="/scene",
+            name="3D scene",
+            background=[235, 238, 242],
+            line_grid=True,
+            eye_controls=bp.EyeControls3D(
+                position=[2, -7, 4.5],
+                look_target=[0, 0, 0.4],
+                eye_up=[0, 0, 1],
+            ),
+        ),
+        bp.Spatial3DView(
+            origin="/scene",
+            contents=[
+                "$origin/pallet_frame/guide/**",
+                "$origin/pallet_frame/rollout/**",
+                "$origin/detections",
+                "$origin/estimate/**",
+            ],
+            name="3D paths",
+            background=[235, 238, 242],
+            line_grid=True,
+        ),
+    )
+    return bp.Blueprint(
+        bp.Horizontal(
+            scene,
+            bp.Vertical(geometry, signals),
+            column_shares=[3, 2],
+        ),
+        collapse_panels=True,
+    )
 
 
 class Recorder:
-    def __init__(self, directory, manifest, live=False):
+    def __init__(self, directory, manifest, live=False, model=None):
         import rerun as rr
 
         self.dir = Path(directory)
@@ -131,6 +203,10 @@ class Recorder:
         self.live = rr.RecordingStream("pallet_engagement_live") if live else None
         if self.live:
             self.live.spawn()
+        self.streams = [stream for stream in (self.stream, self.live) if stream]
+        self.scene = Scene3D(model, manifest["geometry"]) if model is not None else None
+        if self.scene:
+            self.scene.log_static(self.streams)
         views = diagnostic_views()
         self.stream.send_blueprint(views)
         if self.live:
@@ -155,9 +231,16 @@ class Recorder:
                     if item is None:
                         break
                     kind, t, wall, value = item
+                    for stream in self.streams:
+                        stream.set_time("simulation", duration=np.timedelta64(t, "ns"))
+                        stream.set_time(
+                            "elapsed_wall", duration=np.timedelta64(wall, "ns")
+                        )
                     if kind == "qpos":
                         times.append(t)
                         poses.append(value)
+                        if self.scene:
+                            self.scene.log_pose(self.streams, value)
                         continue
                     v = (
                         asdict(value)
@@ -175,16 +258,11 @@ class Recorder:
                         )
                         + "\n"
                     )
-                    for stream in (self.stream, self.live):
-                        if stream:
-                            stream.set_time(
-                                "simulation", duration=np.timedelta64(t, "ns")
-                            )
-                            stream.set_time(
-                                "elapsed_wall", duration=np.timedelta64(wall, "ns")
-                            )
-                            if kind != "targets" or t % 20_000_000 == 0:
-                                log_rerun(self.rr, stream, kind, v)
+                    for stream in self.streams:
+                        if kind != "targets" or t % 20_000_000 == 0:
+                            log_rerun(self.rr, stream, kind, v)
+                    if self.scene:
+                        self.scene.log_event(self.streams, kind, t, v)
             np.savez_compressed(self.dir / "states.npz", time_ns=times, qpos=poses)
         except Exception as exc:
             self.error = repr(exc)
@@ -210,9 +288,8 @@ class Recorder:
 
 def configuration(directory):
     data = json.loads((Path(directory) / "manifest.json").read_text())["config"]
-    if data["method"] != "search_ilqr":
-        # Original shared recordings predate the wheel-slip covariance term.
-        data["sensors"].setdefault("slip_std_per_sqrt_m", (0.0, 0.0, 0.0))
+    # Original shared recordings predate the wheel-slip covariance term.
+    data["sensors"].setdefault("slip_std_per_sqrt_m", (0.0, 0.0, 0.0))
     for key, cls in [
         ("scenario", Scenario),
         ("limits", Limits),
