@@ -63,5 +63,5 @@ def run(case, lateral_offset=0.0):
 
 
 if __name__ == "__main__":
-    outcomes = [run("arc"), run("centered"), run("offset", lateral_offset=0.04)]
+    outcomes = [run("arc"), run("centered"), run("offset", lateral_offset=0.08)]
     raise SystemExit(0 if all(outcomes) else 1)

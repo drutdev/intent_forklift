@@ -59,7 +59,7 @@ class PlantChecks(unittest.TestCase):
         self.assertTrue(e.metrics()["settled"])
 
     def test_positive_separation(self):
-        cfg = Config(scenario=Scenario(0.01, 0.028))
+        cfg = Config(scenario=Scenario(0.01, 0.072))
         plant = Plant(cfg, "proximity")
         # Ask MuJoCo for nearby, inactive contact records.
         plant.m.geom("left_fork").margin[0] = 0.01
@@ -79,9 +79,11 @@ class PlantChecks(unittest.TestCase):
             (0.0, 0.0, True),
             (0.02, 0.0, True),
             (-0.02, 0.0, True),
-            (0.025, 0.0, False),
-            (-0.025, 0.0, False),
-            (0.0, 0.075, False),
+            (0.029, 0.0, True),
+            (-0.029, 0.0, True),
+            (0.08, 0.0, False),
+            (-0.08, 0.0, False),
+            (0.0, 0.15, False),
         ]:
             cfg = Config(scenario=Scenario(0.08, lateral, yaw, 0.47))
             p = Plant(cfg, "physical")
@@ -119,3 +121,31 @@ class PlantChecks(unittest.TestCase):
                     e.update()
                 self.assertEqual(e.first, first)
                 self.assertEqual(e.score("assess_completion")[1], "contact")
+
+    def test_combined_lateral_and_yaw_pocket_clearance(self):
+        for lateral in (-0.03, 0.03):
+            for yaw in np.deg2rad([-2, 2]):
+                cfg = Config(scenario=Scenario(0.08, lateral, yaw, 0.47))
+                plant = Plant(cfg, "wide-pocket")
+                evaluator = Evaluator(plant, cfg.criteria)
+                self.assertGreater(
+                    plant.geometry.opening[1]
+                    - plant.geometry.tip_y
+                    - plant.geometry.half_width,
+                    0.065,
+                )
+                plant.enqueue(Command(plant.stamp(), 0.10))
+                braking = False
+                for _ in range(5000):
+                    plant.step()
+                    evaluator.update()
+                    if not braking and evaluator.metrics()["depth"] >= 0.60:
+                        plant.enqueue(Command(plant.stamp()))
+                        braking = True
+                    if braking and evaluator.metrics()["settled"]:
+                        break
+                metrics = evaluator.metrics()
+                self.assertIsNone(evaluator.first, (lateral, yaw, evaluator.first))
+                self.assertGreaterEqual(metrics["depth"], 0.60)
+                self.assertTrue(metrics["inside"])
+                self.assertTrue(metrics["settled"])

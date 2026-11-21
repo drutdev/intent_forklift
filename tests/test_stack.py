@@ -201,7 +201,7 @@ class StackChecks(unittest.TestCase):
         est = replace(ekf.estimate(), pose=(self.g.tip_x - 0.60, 0, 0), covariance=zero)
         guard = Clearance(self.context(est))
         self.assertGreater(guard.at(guard.origin), 0.019)
-        self.assertLess(guard.at(compose(guard.origin, (0, 0.025, 0))), 0)
+        self.assertLess(guard.at(compose(guard.origin, (0, 0.08, 0))), 0)
         self.assertLess(guard.at(compose(guard.origin, (0, 0, radians(3)))), 0)
 
     def test_supervision_and_recovery(self):
