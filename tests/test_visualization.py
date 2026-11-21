@@ -127,6 +127,42 @@ class SceneChecks(unittest.TestCase):
         for name in ("guide", "rollout"):
             self.assertIsInstance(self.stream.values[f"pallet/{name}"], rr.Clear)
 
+    def test_sensing_pockets_share_the_detection_frame(self):
+        geometry = asdict(self.plant.geometry)
+        offset = self.plant.geometry.landmark_y
+        for kind in ("estimate", "evaluator_truth"):
+            value = dict(pose=[2, 3, pi / 2])
+            if kind == "estimate":
+                value.update(
+                    covariance=np.eye(3),
+                    stamp=dict(time_ns=200),
+                    last_capture_ns=100,
+                )
+            else:
+                value.update(axle_world=[0, 0, 0], pallet_world=[2, 3, pi / 2])
+            log_rerun(rr, self.stream, kind, value, geometry)
+            points = self.stream.values[f"front_axle/{kind}/pockets"]
+            np.testing.assert_allclose(
+                points.positions.as_arrow_array().to_pylist(),
+                [[2 - offset, 3], [2 + offset, 3]],
+            )
+
+    def test_tracking_metrics_preserve_signed_error_and_path_distance(self):
+        log_rerun(
+            rr,
+            self.stream,
+            "proposal",
+            dict(
+                command=dict(speed=0.1, curvature=0),
+                diagnostics=[["cross_track_m", -0.025], ["remaining_m", 1.2]],
+            ),
+        )
+        for name, expected in (("lateral_error_m", -0.025), ("distance_to_end_m", 1.2)):
+            value = self.stream.values[f"tracking/{name}"]
+            np.testing.assert_allclose(
+                value.scalars.as_arrow_array().to_pylist(), [expected]
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,8 @@
 """Local recording, estimator replay, and scene playback."""
 
 import json
+import shutil
+import sysconfig
 import time
 from copy import deepcopy
 from dataclasses import asdict
@@ -12,6 +14,7 @@ import numpy as np
 
 from .config import Config, Criteria, Limits, Scenario, Sensors
 from .estimation import EKF
+from .frames import transform
 from .messages import OdometryIncrement, PocketObservation, Stamp
 from .visualization import Scene3D
 
@@ -20,13 +23,23 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
 
 
-def log_rerun(rr, stream, kind, v):
+def log_rerun(rr, stream, kind, v, geometry=None):
     def scalar(path, value):
         if value is not None:
             stream.log(path, rr.Scalars(value))
 
     if kind in ("estimate", "evaluator_truth") and v.get("initialized", True):
         stream.log(f"front_axle/{kind}", rr.Points2D([v["pose"][:2]]))
+        if geometry is not None:
+            landmark_y = sum(geometry["opening"]) / 2
+            stream.log(
+                f"front_axle/{kind}/pockets",
+                rr.Points2D(
+                    transform(v["pose"], [(0, landmark_y), (0, -landmark_y)]),
+                    labels=[f"{kind} left", f"{kind} right"],
+                    colors=[50, 200, 255] if kind == "estimate" else [70, 200, 90],
+                ),
+            )
         scalar(kind + "/yaw", v["pose"][2])
         if kind == "evaluator_truth":
             stream.log("world/evaluator/axle", rr.Points2D([v["axle_world"][:2]]))
@@ -61,6 +74,9 @@ def log_rerun(rr, stream, kind, v):
         elif v.get("diagnostics"):
             stream.log("solver/diagnostics", rr.TextLog(str(v["diagnostics"])))
         if kind == "proposal":
+            diagnostics = dict(v.get("diagnostics", ()))
+            scalar("tracking/lateral_error_m", diagnostics.get("cross_track_m"))
+            scalar("tracking/distance_to_end_m", diagnostics.get("remaining_m"))
             goal_label = "Guide endpoint"
             horizon_label = "Prediction horizon"
             for name, label, color, width in (
@@ -118,23 +134,21 @@ def log_rerun(rr, stream, kind, v):
 def diagnostic_views():
     import rerun.blueprint as bp
 
-    geometry = bp.Tabs(
+    sensing = bp.Tabs(
         bp.Spatial2DView(
-            origin="/pallet",
-            contents=["$origin/guide/**", "$origin/rollout/**"],
-            name="Guide and predicted motion",
+            origin="/front_axle",
+            name="Sensing: detections, estimate and ground truth",
         ),
-        bp.Spatial2DView(
-            origin="/front_axle", name="Detections and estimate in axle frame"
-        ),
-        bp.Spatial2DView(
-            origin="/pallet", name="Guide and stopping path in pallet frame"
-        ),
+        bp.TimeSeriesView(origin="/variance", name="Uncertainty: pose variances"),
+        bp.TimeSeriesView(name="Detection age (s)", contents=["/detector/age_s"]),
         bp.Spatial2DView(origin="/world", name="Evaluator world poses"),
     )
-    signals = bp.Tabs(
+    tracking = bp.Tabs(
+        bp.Spatial2DView(
+            origin="/pallet", name="Tracking: guide, prediction and stopping path"
+        ),
         bp.TimeSeriesView(
-            name="Axle speed (m/s)",
+            name="Desired vs measured speed (m/s)",
             contents=[
                 "/motion/measured_speed",
                 "/motion/proposal_speed",
@@ -143,12 +157,18 @@ def diagnostic_views():
             ],
         ),
         bp.TimeSeriesView(
+            name="Lateral error to path (m)",
+            contents=["/tracking/lateral_error_m"],
+        ),
+        bp.TimeSeriesView(
+            name="Distance to end (m)",
+            contents=["/tracking/distance_to_end_m"],
+        ),
+        bp.TimeSeriesView(
             name="Rear steering (rad)",
             contents=["/motion/rear_angle_0", "/motion/rear_angle_1"],
         ),
         bp.TimeSeriesView(origin="/guard", name="Clearance and stopping distance (m)"),
-        bp.TimeSeriesView(origin="/variance", name="Pose variances"),
-        bp.TimeSeriesView(name="Detection age (s)", contents=["/detector/age_s"]),
         bp.TextLogView(name="Method and supervisor messages"),
     )
     scene = bp.Tabs(
@@ -179,7 +199,7 @@ def diagnostic_views():
     return bp.Blueprint(
         bp.Horizontal(
             scene,
-            bp.Vertical(geometry, signals),
+            bp.Vertical(sensing, tracking),
             column_shares=[3, 2],
         ),
         collapse_panels=True,
@@ -198,11 +218,16 @@ class Recorder:
         self.error = None
         self.start = time.monotonic_ns()
         self.rr = rr
+        self.geometry = manifest.get("geometry")
         self.stream = rr.RecordingStream("pallet_engagement")
         self.stream.save(self.dir / "trace.rrd")
         self.live = rr.RecordingStream("pallet_engagement_live") if live else None
         if self.live:
-            self.live.spawn()
+            # Explicit .venv/bin/python does not put .venv/bin on PATH.
+            rr.spawn(
+                recording=self.live,
+                executable_path=shutil.which("rerun", path=sysconfig.get_path("scripts")),
+            )
         self.streams = [stream for stream in (self.stream, self.live) if stream]
         self.scene = Scene3D(model, manifest["geometry"]) if model is not None else None
         if self.scene:
@@ -260,7 +285,7 @@ class Recorder:
                     )
                     for stream in self.streams:
                         if kind != "targets" or t % 20_000_000 == 0:
-                            log_rerun(self.rr, stream, kind, v)
+                            log_rerun(self.rr, stream, kind, v, self.geometry)
                     if self.scene:
                         self.scene.log_event(self.streams, kind, t, v)
             np.savez_compressed(self.dir / "states.npz", time_ns=times, qpos=poses)
