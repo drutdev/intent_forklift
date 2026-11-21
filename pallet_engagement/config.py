@@ -68,7 +68,7 @@ class Criteria:
 
 @dataclass(frozen=True)
 class Config:
-    method: str = "hold"
+    method: str = "geometric"
     mode: str = "deterministic"
     seed: int = 7
     duration: float = 60.0

@@ -40,7 +40,7 @@ class ScriptedDrive(Hold):
 class StackChecks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.cfg = Config(scenario=Scenario(0.03, 0, 0, 0.8))
+        cls.cfg = Config(method="hold", scenario=Scenario(0.03, 0, 0, 0.8))
         cls.plant = Plant(cls.cfg, "test")
         cls.g = cls.plant.geometry
         cls.fb = cls.plant.feedback()
@@ -323,7 +323,7 @@ class StackChecks(unittest.TestCase):
         self.assertLess(decision.clearance, 0)
 
     def test_registration(self):
+        self.assertEqual(set(REGISTRY), {"geometric", "hold"})
+        self.assertEqual(Config().method, "geometric")
         self.assertEqual(load("geometric").period_ns, 20_000_000)
-        for name in ("search_ilqr", "rl"):
-            with self.assertRaisesRegex(ValueError, "implementation pending"):
-                load(name)
+        self.assertIsInstance(load("hold"), Hold)

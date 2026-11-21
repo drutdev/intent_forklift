@@ -1,5 +1,4 @@
 .venv/
 recordings/
-/pallet_engagement/__pycache__/
-/tests/__pycache__/
+__pycache__/
 /.ruff_cache/

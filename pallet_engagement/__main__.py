@@ -61,13 +61,12 @@ def main():
         metavar=("DISTANCE", "LATERAL", "HEADING", "PALLET_YAW"),
         help="pallet-frame start in metres and radians",
     )
-    one.add_argument("--method", choices=REGISTRY, default="hold")
+    one.add_argument("--method", choices=REGISTRY, default="geometric")
     one.add_argument("--seed", type=int, default=7)
     one.add_argument("--scenario", choices=["nominal", "comparison"], default="nominal")
     one.add_argument("--record", nargs="?", const="")
     one.add_argument("--live", action="store_true")
-    one.add_argument("--checkpoint")
-    batch.add_argument("--methods", nargs="+", choices=REGISTRY, default=["hold"])
+    batch.add_argument("--methods", nargs="+", choices=REGISTRY, default=["geometric"])
     batch.add_argument(
         "--suite", choices=["comparison", "nominal"], default="comparison"
     )
@@ -126,8 +125,6 @@ def main():
 
             if args.action == "run":
                 load(args.method)
-                if args.checkpoint:
-                    parser.error("--checkpoint requires an implemented RL method")
                 if args.record == "":
                     args.record = f"recordings/{args.method}"
                 if args.live and not args.record:

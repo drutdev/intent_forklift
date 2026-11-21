@@ -97,7 +97,6 @@ def manifest(cfg, plant, episode):
         dependencies={
             n: version(n) for n in ("numpy", "mujoco", "rerun-sdk", "imageio-ffmpeg")
         },
-        checkpoint_sha256=None,
         method_period_ns=load(cfg.method).period_ns,
         physics_step_ns=STEP_NS,
         control_period_ns=CONTROL_NS,
