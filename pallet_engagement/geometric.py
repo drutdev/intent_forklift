@@ -249,36 +249,37 @@ class Method:
         diag["rejected"] = tuple(rejected) or ("restricted_geometry",)
 
     def plan_retreat(self, start, ctx, guard, diag):
-        for distance in (2.5,):
-            poses = np.array(
-                [
-                    compose(start[:3], (-d, 0, 0))
-                    for d in np.linspace(0, distance, int(distance / 0.02) + 1)
-                ]
+        distance = 2.5
+        poses = np.array(
+            [
+                compose(start[:3], (-d, 0, 0))
+                for d in np.linspace(0, distance, int(distance / 0.02) + 1)
+            ]
+        )
+        if guard.swept(poses) <= 0:
+            return None
+        tail = self.forward((*poses[-1], 0), ctx, guard, 0, diag)
+        if tail is None:
+            return None
+        leg = timed_path(
+            np.column_stack((poses, np.zeros(len(poses)))),
+            0,
+            ctx,
+            ctx.limits.recovery_speed,
+            ctx.limits.recovery_speed,
+            0,
+            reverse=True,
+        )
+        self.retreat = leg
+        samples = np.vstack(
+            (
+                np.column_stack((poses[1:], leg.v[1:])),
+                np.column_stack((tail.pose, tail.v)),
             )
-            if guard.swept(poses) <= 0:
-                continue
-            tail = self.forward((*poses[-1], 0), ctx, guard, 0, diag)
-            if tail is not None:
-                leg = timed_path(
-                    np.column_stack((poses, np.zeros(len(poses)))),
-                    0,
-                    ctx,
-                    ctx.limits.recovery_speed,
-                    ctx.limits.recovery_speed,
-                    0,
-                    reverse=True,
-                )
-                self.retreat = leg
-                samples = np.vstack(
-                    (
-                        np.column_stack((poses[1:], leg.v[1:])),
-                        np.column_stack((tail.pose, tail.v)),
-                    )
-                )
-                self.authorization = self.trajectory(ctx, samples)
-                diag["retreat_m"] = distance
-                return self.authorization
+        )
+        self.authorization = self.trajectory(ctx, samples)
+        diag["retreat_m"] = distance
+        return self.authorization
 
     def trajectory(self, ctx, samples, suffix=""):
         return GuideTrajectory(
@@ -287,6 +288,30 @@ class Method:
             ctx.target_id,
             tuple(map(tuple, samples)),
         )
+
+    def tracking_command(self, ctx, state, sign, remaining):
+        path = self.path
+        k = tracking_curvature(
+            path, self.progress, state.pose, state.speed, sign, self.lookahead, ctx
+        )
+        # The spatial reference bounds clock catch-up after transient lag.
+        t = ctx.stamp.time_ns
+        elapsed = (t - self.clock + ctx.limits.delay_ns + self.period_ns) * 1e-9
+        scheduled = abs(np.interp(elapsed, path.time, path.v))
+        spatial = abs(np.interp(min(path.s[-1], self.progress + 0.015), path.s, path.v))
+        v = min(
+            max(scheduled, abs(np.interp(self.progress, path.s, path.v))),
+            max(0.025, spatial),
+            np.sqrt(2 * ctx.limits.brake * remaining),
+        )
+        # A small crawl closes residual longitudinal error after a noisy projection.
+        v = min(
+            max(0.012, v),
+            min(0.18, ctx.limits.target_accel)
+            * (t - self.launch_ns + ctx.limits.delay_ns + self.period_ns)
+            * 1e-9,
+        )
+        return Command(ctx.stamp, sign * v, k)
 
     def propose(self, ctx):
         t = ctx.stamp.time_ns
@@ -408,8 +433,6 @@ class Method:
                 authorization = self.plan_retreat(start, ctx, guard, diag)
                 if authorization:
                     return reply("retry", "signed_connection", authorization)
-                if self.plan_failure_since is None:
-                    self.plan_failure_since = t
                 self.next_plan_ns = t + 1_000_000_000
                 if t - self.plan_failure_since < 8_000_000_000:
                     return reply("hold", "planning_reacquisition")
@@ -440,26 +463,7 @@ class Method:
         remaining = path.s[-1] - self.progress
         if ctx.recovery and remaining < 0.004:
             return reply("reacquire", "retreat_stop")
-        k = tracking_curvature(
-            path, self.progress, state.pose, state.speed, sign, self.lookahead, ctx
-        )
-        # The spatial reference bounds clock catch-up after transient lag.
-        elapsed = (t - self.clock + ctx.limits.delay_ns + self.period_ns) * 1e-9
-        scheduled = abs(np.interp(elapsed, path.time, path.v))
-        spatial = abs(np.interp(min(path.s[-1], self.progress + 0.015), path.s, path.v))
-        v = min(
-            max(scheduled, abs(np.interp(self.progress, path.s, path.v))),
-            max(0.025, spatial),
-            np.sqrt(2 * ctx.limits.brake * remaining),
-        )
-        # A small crawl closes residual longitudinal error after a noisy projection.
-        v = min(
-            max(0.012, v),
-            min(0.18, ctx.limits.target_accel)
-            * (t - self.launch_ns + ctx.limits.delay_ns + self.period_ns)
-            * 1e-9,
-        )
-        command = Command(ctx.stamp, sign * v, k)
+        command = self.tracking_command(ctx, state, sign, remaining)
         idx = min(len(path.s) - 1, np.searchsorted(path.s, self.progress, side="right"))
         guide = self.trajectory(ctx, np.column_stack((path.pose[idx:], path.v[idx:])))
         # Predict the measured response to this request over the feedback horizon.
@@ -484,7 +488,7 @@ class Method:
                 or t - ctx.estimate.last_capture_ns > ctx.criteria.fresh_ns
             ):
                 cap = guard.approach_speed_limit(state.pose)
-                command = replace(command, speed=min(v, cap))
+                command = replace(command, speed=min(command.speed, cap))
                 if cap < 0.012 or not guard.approach_allowed(command):
                     self.paused = True
                     return reply("hold", "entry_clearance")

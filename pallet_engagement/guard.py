@@ -42,12 +42,13 @@ class Clearance:
         """Lower bound on distance of every projected piece from the entry plane."""
         pose = self.origin if pose is None else pose
         points = self.corners @ rotation(pose[2]).T + pose[:2]
-        lever = self.origin[1] - points[:, :, 1]
-        variance = self.P[0, 0] + 2 * lever * self.P[0, 2] + lever**2 * self.P[2, 2]
-        allowance = self.ctx.limits.tracking + self.ctx.limits.sigma * np.sqrt(
-            np.maximum(variance, 0.0)
-        )
+        allowance = self._uncertainty_margin(0, self.origin[1] - points[:, :, 1])
         return float(-(points[:, :, 0] + allowance).max())
+
+    def _uncertainty_margin(self, i, lever):
+        P, lim = self.P, self.ctx.limits
+        variance = P[i, i] + 2 * lever * P[i, 2] + lever**2 * P[2, 2]
+        return lim.tracking + lim.sigma * np.sqrt(np.maximum(variance, 0))
 
     def approach_reserve(self, speed, pose=None):
         lim = self.ctx.limits
@@ -98,14 +99,8 @@ class Clearance:
         points = self.corners @ rotation(pose[2]).T + pose[:2]
         # Sensitivities of each projected corner to the inverse pose at rollout start.
         rx, ry = (points - self.origin[:2]).transpose(2, 0, 1)
-        P = self.P
-
-        def margin(i, lever):
-            var = P[i, i] + 2 * lever * P[i, 2] + lever**2 * P[2, 2]
-            return ctx.limits.tracking + ctx.limits.sigma * np.sqrt(np.maximum(var, 0))
-
         x, y = points.transpose(2, 0, 1)
-        mx, my = margin(0, -ry), margin(1, rx)
+        mx, my = self._uncertainty_margin(0, -ry), self._uncertainty_margin(1, rx)
         before = -(x + mx).max(axis=1)
         # Non-fork pieces use a conservative full-width pallet envelope.
         around = (
@@ -136,7 +131,7 @@ class Clearance:
             if clipped:
                 q = np.asarray(clipped)
                 sy = self.side[i] * q[:, 1]
-                my_clip = margin(1, q[:, 0] - self.origin[0])
+                my_clip = self._uncertainty_margin(1, q[:, 0] - self.origin[0])
                 corridor = min((sy - my_clip).min() - lo, hi - (sy + my_clip).max())
                 result[i] = max(
                     before[i], min(corridor, ctx.geometry.length - (x[i] + mx[i]).max())
@@ -173,14 +168,9 @@ class Clearance:
         bx, by = self.corners.transpose(2, 0, 1)
         x = poses[:, 0, None, None] + c * bx - s * by
         y = poses[:, 1, None, None] + s * bx + c * by
-        lim, g, P = self.ctx.limits, self.ctx.geometry, self.P
-
-        def margin(i, lever):
-            var = P[i, i] + 2 * lever * P[i, 2] + lever**2 * P[2, 2]
-            return lim.tracking + lim.sigma * np.sqrt(np.maximum(var, 0))
-
-        mx = margin(0, self.origin[1] - y)
-        my = margin(1, x - self.origin[0])
+        g = self.ctx.geometry
+        mx = self._uncertainty_margin(0, self.origin[1] - y)
+        my = self._uncertainty_margin(1, x - self.origin[0])
         before = -(x + mx).max(axis=2)
         after = (x - mx).min(axis=2) - g.length
         around = (
@@ -200,7 +190,9 @@ class Clearance:
             uncertainty = np.hstack(
                 (
                     my[:, i],
-                    np.broadcast_to(margin(1, plane - self.origin[0]), frac.shape),
+                    np.broadcast_to(
+                        self._uncertainty_margin(1, plane - self.origin[0]), frac.shape
+                    ),
                 )
             )
             lateral = np.minimum(

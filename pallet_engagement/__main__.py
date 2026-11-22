@@ -1,7 +1,7 @@
 import argparse
 import json
 from collections import Counter
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from math import sqrt
 from pathlib import Path
 
@@ -15,6 +15,42 @@ def wilson(wins, n):
     p = wins / n
     half = z * sqrt((p * (1 - p) + z * z / (4 * n)) / n)
     return [(p + z * z / (2 * n) + sign * half) / (1 + z * z / n) for sign in (-1, 1)]
+
+
+def make_config(args, method, seed, name, outage, speed_cap=False):
+    sensors = Sensors(
+        dropout=args.dropout,
+        outage_index=args.outage_index,
+        outage_count=outage,
+    )
+    if args.ideal:
+        sensors = replace(
+            sensors,
+            dropout=0,
+            noise_scale=0,
+            scale_walk=0,
+            heading_walk=0,
+            encoder_noise=0,
+            yaw_noise=0,
+        )
+    if args.acquire_timeout <= 0:
+        raise ValueError("--acquire-timeout must be positive")
+    pose = getattr(args, "pose", None)
+    return Config(
+        method,
+        args.mode,
+        seed,
+        args.duration,
+        Scenario(*pose) if pose else scenario(name, seed),
+        sensors,
+        Limits(
+            uncertainty_speed_cap=speed_cap,
+            delay_uncertainty_ns=args.delay_uncertainty_ms * 1_000_000,
+        ),
+        Criteria(acquire_ns=round(args.acquire_timeout * 1e9)),
+        moving_detection_gain=args.moving_detection_gain,
+        odometry_covariance_scale=args.odometry_covariance_scale,
+    )
 
 
 def main():
@@ -87,42 +123,6 @@ def main():
         else:
             from .runtime import run
 
-            def config(method, seed, name, outage, speed_cap=False):
-                sensors = Sensors(
-                    dropout=args.dropout,
-                    outage_index=args.outage_index,
-                    outage_count=outage,
-                )
-                if args.ideal:
-                    sensors = Sensors(
-                        dropout=0,
-                        noise_scale=0,
-                        outage_index=args.outage_index,
-                        outage_count=outage,
-                        scale_walk=0,
-                        heading_walk=0,
-                        encoder_noise=0,
-                        yaw_noise=0,
-                    )
-                if args.acquire_timeout <= 0:
-                    raise ValueError("--acquire-timeout must be positive")
-                pose = getattr(args, "pose", None)
-                return Config(
-                    method,
-                    args.mode,
-                    seed,
-                    args.duration,
-                    Scenario(*pose) if pose else scenario(name, seed),
-                    sensors,
-                    Limits(
-                        uncertainty_speed_cap=speed_cap,
-                        delay_uncertainty_ns=args.delay_uncertainty_ms * 1_000_000,
-                    ),
-                    Criteria(acquire_ns=round(args.acquire_timeout * 1e9)),
-                    moving_detection_gain=args.moving_detection_gain,
-                    odometry_covariance_scale=args.odometry_covariance_scale,
-                )
-
             if args.action == "run":
                 load(args.method)
                 if args.record == "":
@@ -130,7 +130,9 @@ def main():
                 if args.live and not args.record:
                     parser.error("--live requires --record")
                 result = run(
-                    config(args.method, args.seed, args.scenario, args.outage_count),
+                    make_config(
+                        args, args.method, args.seed, args.scenario, args.outage_count
+                    ),
                     args.record,
                     args.live,
                 ).to_dict()
@@ -145,7 +147,7 @@ def main():
                     for method in args.methods:
                         for cap in [False, True] if args.paired_speed_cap else [False]:
                             configs = [
-                                config(method, i, args.suite, n, cap)
+                                make_config(args, method, i, args.suite, n, cap)
                                 for i in range(a, b)
                             ]
                             runs = [

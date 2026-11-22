@@ -5,6 +5,11 @@ import numpy as np
 
 from .frames import compose, rotation, transform
 
+PATH_STYLES = (
+    ("guide", [70, 200, 90], 4, "Joined path"),
+    ("rollout", [255, 180, 30], 2, "Tracking prediction"),
+)
+
 
 class Scene3D:
     def __init__(self, model, geometry):
@@ -145,20 +150,7 @@ class Scene3D:
                         width,
                         label,
                     )
-                    for name, color, width, label in (
-                        (
-                            "guide",
-                            [70, 200, 90],
-                            4,
-                            "Joined path",
-                        ),
-                        (
-                            "rollout",
-                            [255, 180, 30],
-                            2,
-                            "Tracking prediction",
-                        ),
-                    )
+                    for name, color, width, label in PATH_STYLES
                 ]
             for name, samples, color, width, label in paths:
                 path = f"scene/pallet_frame/{name}"

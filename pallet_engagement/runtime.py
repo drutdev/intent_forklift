@@ -18,19 +18,18 @@ from .guard import Supervisor
 from .messages import Command, ControlContext, MotionProposal
 from .methods import load
 from .plant import MODEL, Plant
-from .prediction import slew_targets
+from .prediction import advance_targets
 from .recording import Recorder, write_json
 
 
 def compute(method, ctx, updates):
     start = time.monotonic_ns()
+    # A method failure must still pass through braking and scoring.
     try:
         for msg in updates:
             method.observe(msg)
         proposal = method.propose(ctx)
-    except (
-        Exception
-    ) as exc:  # A method failure must still pass through braking and scoring.
+    except Exception as exc:
         proposal = MotionProposal(
             Command(ctx.stamp),
             ctx.stamp.time_ns + CONTROL_NS,
@@ -61,16 +60,14 @@ def worker(conn, method, settings):
 
 
 def stats(values):
-    return (
-        dict(
-            count=len(values),
-            p50_ns=int(np.median(values)),
-            p95_ns=int(np.percentile(values, 95)),
-            max_ns=int(max(values)),
-        )
-        if values
-        else dict(count=0)
-    )
+    if not values:
+        return {"count": 0}
+    return {
+        "count": len(values),
+        "p50_ns": int(np.median(values)),
+        "p95_ns": int(np.percentile(values, 95)),
+        "max_ns": int(max(values)),
+    }
 
 
 def manifest(cfg, plant, episode):
@@ -134,8 +131,8 @@ def run(cfg, directory=None, live=False):
     revision = 0
     reason = "episode_timeout"
     start = 0
-    coverage = []
-    outage_coverage = []
+    coverage_count = coverage_within = 0
+    outage_count = outage_within = 0
     terminal_ns = None
     last_snapshot = None
     outage_distance = None
@@ -232,9 +229,11 @@ def run(cfg, directory=None, live=False):
                     covered = bool(
                         np.all(abs(error) <= 2 * np.sqrt(np.diag(est.covariance)))
                     )
-                    coverage.append(covered)
+                    coverage_count += 1
+                    coverage_within += covered
                     if t - est.last_capture_ns >= CAPTURE_NS:
-                        outage_coverage.append(covered)
+                        outage_count += 1
+                        outage_within += covered
                 max_delay = cfg.limits.delay_ns + cfg.limits.delay_uncertainty_ns
                 while issued and issued[0].stamp.time_ns + max_delay <= t:
                     history_base = issued.popleft()
@@ -333,26 +332,7 @@ def run(cfg, directory=None, live=False):
                 issued.append(decision.command)
                 # Reconstruct nominal actuator targets solely from released requests.
                 # Include fractional control intervals at application boundaries.
-                time_cursor, request = t, active
-                for future in (*pending, decision.command):
-                    when = future.stamp.time_ns + cfg.limits.delay_ns
-                    if when > t + CONTROL_NS:
-                        break
-                    nominal_targets = slew_targets(
-                        *nominal_targets,
-                        request,
-                        (when - time_cursor) * 1e-9,
-                        plant.geometry,
-                        cfg.limits,
-                    )
-                    time_cursor, request = when, future
-                nominal_targets = slew_targets(
-                    *nominal_targets,
-                    request,
-                    (t + CONTROL_NS - time_cursor) * 1e-9,
-                    plant.geometry,
-                    cfg.limits,
-                )
+                nominal_targets = advance_targets(ctx, decision.command)
                 wall_cost.append(time.monotonic_ns() - begin)
                 if decision.terminal:
                     reason = decision.terminal
@@ -399,11 +379,11 @@ def run(cfg, directory=None, live=False):
     success, reason, metrics = evaluator.score(reason)
     metrics.update(
         gate_or_time_rejections=ekf.rejected,
-        estimates_within_two_sigma=sum(coverage),
-        estimates_scored=len(coverage),
+        estimates_within_two_sigma=coverage_within,
+        estimates_scored=coverage_count,
         outage_start_distance=outage_distance,
-        outage_estimates_scored=len(outage_coverage),
-        outage_within_two_sigma=sum(outage_coverage),
+        outage_estimates_scored=outage_count,
+        outage_within_two_sigma=outage_within,
     )
     timing = dict(
         wall_ns=elapsed,

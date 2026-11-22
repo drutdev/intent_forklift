@@ -16,7 +16,7 @@ from .config import Config, Criteria, Limits, Scenario, Sensors
 from .estimation import EKF
 from .frames import transform
 from .messages import OdometryIncrement, PocketObservation, Stamp
-from .visualization import Scene3D
+from .visualization import PATH_STYLES, Scene3D
 
 
 def write_json(path, value):
@@ -71,28 +71,15 @@ def log_rerun(rr, stream, kind, v, geometry=None):
                 )
             scalar("guard/clearance", v["clearance"])
             scalar("guard/stopping_distance", v["stopping_distance"])
-        elif v.get("diagnostics"):
-            stream.log("solver/diagnostics", rr.TextLog(str(v["diagnostics"])))
-        if kind == "proposal":
+        else:
+            if v.get("diagnostics"):
+                stream.log("solver/diagnostics", rr.TextLog(str(v["diagnostics"])))
             diagnostics = dict(v.get("diagnostics", ()))
             scalar("tracking/lateral_error_m", diagnostics.get("cross_track_m"))
             scalar("tracking/distance_to_end_m", diagnostics.get("remaining_m"))
             goal_label = "Guide endpoint"
             horizon_label = "Prediction horizon"
-            for name, label, color, width in (
-                (
-                    "guide",
-                    "Joined path",
-                    [70, 200, 90],
-                    4,
-                ),
-                (
-                    "rollout",
-                    "Tracking prediction",
-                    [255, 180, 30],
-                    2,
-                ),
-            ):
+            for name, color, width, label in PATH_STYLES:
                 samples = (v.get(name) or {}).get("samples", [])
                 path = f"pallet/{name}"
                 if samples:

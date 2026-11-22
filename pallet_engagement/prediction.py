@@ -5,7 +5,8 @@ from math import atan, exp, tan
 
 import numpy as np
 
-from .frames import ackermann, arc, compose, curvatures
+from .config import CONTROL_NS
+from .frames import ackermann, arc, compose, curvatures, inverse
 
 
 @dataclass(frozen=True)
@@ -55,13 +56,37 @@ def advance(state, command, dt, geometry, limits):
     v = next_target + (state.speed - next_target) * exp(-dt / limits.speed_response_s)
     k = -tan((state.rear_angle + delta) / 2) / geometry.wheelbase
     pose = compose(state.pose, arc((state.speed + v) * dt / 2, k))
-    return PredictedMotion(pose, v, delta, next_target, tuple(targets))
+    return PredictedMotion(pose, v, delta, next_target, targets)
+
+
+def advance_targets(ctx, command):
+    """Reconstruct released targets through the next control interval."""
+    targets = ctx.nominal_targets
+    t = ctx.stamp.time_ns
+    time_cursor, request = t, ctx.active
+    for future in (*ctx.pending, command):
+        when = future.stamp.time_ns + ctx.limits.delay_ns
+        if when > t + CONTROL_NS:
+            break
+        targets = slew_targets(
+            *targets,
+            request,
+            (when - time_cursor) * 1e-9,
+            ctx.geometry,
+            ctx.limits,
+        )
+        time_cursor, request = when, future
+    return slew_targets(
+        *targets,
+        request,
+        (t + CONTROL_NS - time_cursor) * 1e-9,
+        ctx.geometry,
+        ctx.limits,
+    )
 
 
 def predict_queue(ctx, duration_ns, issued=(), *, samples=None):
     """Predict the nominal released-command prefix and any supplied future commands."""
-    from .frames import inverse
-
     state = PredictedMotion.measured(
         inverse(ctx.estimate.pose), ctx.feedback, ctx.geometry
     )
