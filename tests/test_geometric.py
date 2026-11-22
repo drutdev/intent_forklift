@@ -125,6 +125,52 @@ class GeometricChecks(unittest.TestCase):
             Supervisor().decide(stale, method.propose(stale)).command.speed, 0
         )
 
+    def test_completion_checks_tip_pose_tolerances(self):
+        ctx = self.ctx
+        g, criteria = ctx.geometry, ctx.criteria
+        goal = criteria.depth + criteria.target_allowance - g.tip_x
+        cases = [
+            ("aligned", (goal, 0, 0), criteria, "complete"),
+            ("tip centered despite axle offset",
+             (goal, -g.tip_x * np.sin(.03) + .005, .03), criteria, "complete"),
+            ("positive lateral", (goal, .031, 0), criteria, "failed"),
+            ("negative lateral", (goal, -.031, 0), criteria, "failed"),
+            ("lateral boundary", (goal, criteria.lateral, 0), criteria, "failed"),
+            ("positive yaw", (goal, 0, .04), criteria, "failed"),
+            ("negative yaw", (goal, 0, -.04), criteria, "failed"),
+            ("yaw boundary", (goal, 0, criteria.yaw), criteria, "failed"),
+            ("tip lever arm", (goal, 0, .03), criteria, "failed"),
+            ("insufficient blade depth", (criteria.depth - g.tip_x - .003, 0, 0),
+             replace(criteria, target_allowance=0), "failed"),
+        ]
+        for label, origin, limits, expected in cases:
+            with self.subTest(label=label):
+                method = load("geometric")
+                method.reset(())
+                current = replace(ctx, criteria=limits,
+                    estimate=replace(ctx.estimate, pose=inverse(origin)))
+                proposal = method.propose(current)
+                self.assertEqual(proposal.status, expected)
+                self.assertEqual(proposal.command.speed, 0)
+                if expected == "failed":
+                    self.assertEqual(dict(proposal.diagnostics)["reason"],
+                                     "completion_pose_out_of_tolerance")
+                    self.assertEqual(Supervisor().decide(current, proposal).terminal,
+                                     "planning_failure")
+
+    def test_out_of_tolerance_stop_does_not_repeat_completion(self):
+        ctx = self.ctx
+        goal = ctx.criteria.depth + ctx.criteria.target_allowance - ctx.geometry.tip_x
+        method = load("geometric")
+        method.reset(())
+        for time_ns in (0, CONTROL_NS, 7_000_000_000):
+            stamp = replace(ctx.stamp, time_ns=time_ns)
+            current = replace(ctx, stamp=stamp, estimate=replace(ctx.estimate,
+                stamp=stamp, last_capture_ns=time_ns, pose=inverse((goal, -.045, -.064))))
+            proposal = method.propose(current)
+            self.assertEqual(proposal.status, "failed")
+            self.assertEqual(proposal.command.speed, 0)
+
     def test_checked_retreat_needs_stopped_authorization(self):
         ctx = self.ctx
         pose = inverse((-ctx.geometry.tip_x - 0.55, 0.06, 0))

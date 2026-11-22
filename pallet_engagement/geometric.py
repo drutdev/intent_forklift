@@ -125,7 +125,7 @@ def tracking_curvature(path, progress, pose, speed, sign, lookahead, ctx):
     yaw_error = np.arctan2(
         np.sin(pose[2] - reference[2]), np.cos(pose[2] - reference[2])
     )
-    yaw_gain = 0.5 if straight else 2.0
+    yaw_gain = 0.0
     correction -= sign * yaw_gain * ctx.geometry.tip_x * yaw_error / (look * look)
     limit = curvature_limit(ctx.geometry, ctx.limits)
     return float(np.clip(feedforward + correction, -limit, limit))
@@ -361,7 +361,23 @@ class Method:
                     np.interp(self.progress, self.path.s, self.path.time) * 1e9
                 )
         if not ctx.recovery and guard.origin[0] >= goal - 0.004:
-            return reply("complete", "final_stop")
+            g, criteria = ctx.geometry, ctx.criteria
+            x, y, heading = guard.origin
+            lateral = y + g.tip_x * sin(heading)
+            depth = (
+                x + g.tip_x * cos(heading)
+                - (g.tip_y + g.half_width) * abs(sin(heading))
+            )
+            diag.update(completion_depth_m=depth, completion_lateral_m=lateral,
+                        completion_yaw_rad=heading)
+            if (
+                depth >= criteria.depth
+                and abs(lateral) < criteria.lateral
+                and abs(heading) < criteria.yaw
+                and guard.at(guard.origin) > 0
+            ):
+                return reply("complete", "final_stop")
+            return reply("failed", "completion_pose_out_of_tolerance")
         if self.path is None:
             if self.authorization is not None:
                 if guard.guide(self.authorization) <= 0:

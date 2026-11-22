@@ -1,0 +1,62 @@
+{
+  "episode": "geometric-8-21b9afb4bcddf5ef",
+  "time_ns": 23380000000,
+  "success": true,
+  "reason": "success",
+  "first_contact": null,
+  "metrics": {
+    "depth": 0.6274130079859166,
+    "lateral": -0.0033146614352275727,
+    "yaw": -0.0015824769431490048,
+    "inside": true,
+    "settled": true,
+    "peak_true_speed": 0.2196116069427957,
+    "peak_steer_rate": 0.011522566616727731,
+    "minimum_positive_separation": null,
+    "floor_contact_samples": 93472,
+    "gate_or_time_rejections": 1,
+    "estimates_within_two_sigma": 1170,
+    "estimates_scored": 1170,
+    "outage_start_distance": null,
+    "outage_estimates_scored": 140,
+    "outage_within_two_sigma": 140,
+    "recording_drops": 0,
+    "recording_error": null
+  },
+  "timing": {
+    "wall_ns": 23384038595,
+    "method": {
+      "count": 1165,
+      "p50_ns": 3752212,
+      "p95_ns": 7914033,
+      "max_ns": 84520041
+    },
+    "compute_over_period": 1,
+    "control": {
+      "count": 1170,
+      "p50_ns": 10661842,
+      "p95_ns": 18925583,
+      "max_ns": 35646974
+    },
+    "control_lateness": {
+      "count": 1170,
+      "p50_ns": 64798,
+      "p95_ns": 10239509,
+      "max_ns": 35471388
+    },
+    "missed_control_deadlines": 24,
+    "late_results": 1,
+    "expired_proposal_ticks": 2,
+    "worker_pending": true
+  },
+  "recording_complete": true,
+  "overrides": {
+    "awaiting_proposal": 1,
+    "expired_proposal": 2,
+    "estimated_completion_pending": 21
+  },
+  "retries": 0,
+  "execution_mode": "realtime",
+  "schema": 1,
+  "frame": "pallet"
+}

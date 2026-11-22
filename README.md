@@ -1,8 +1,8 @@
 # Forklift pallet engagement
 
-This repository runs a geometric pallet-engagement stack for a rear-steered forklift and one stationary rackable pallet. A restricted continuous-curvature CSC or SC approach joins straight insertion with a continuous speed profile. Turns use clothoids and optional circular arcs. Pure pursuit tracks the path. The runtime supplies timestamped sensing, a relative-pose EKF, delayed actuation, uncertainty-aware supervision, physical scoring, and recording.
+This repository runs a continuous-curvature (CC) pallet-engagement stack for a rear-steered forklift and one stationary rackable pallet. A restricted continuous-curvature CSC or SC approach joins straight insertion with a continuous speed profile. Turns use clothoids and optional circular arcs. Pure pursuit tracks the path. The runtime supplies timestamped sensing, a relative-pose EKF, delayed actuation, uncertainty-aware supervision, physical scoring, and recording.
 
-`geometric` is the default for both `run` and `evaluate`. The stationary `hold` method remains available for runtime diagnostics.
+The CC steering method uses the CLI name `geometric` and is the default for both `run` and `evaluate`. The stationary `hold` method remains available for runtime diagnostics.
 
 ## Pallet clearance
 
@@ -12,9 +12,31 @@ This modified simulation fixture accommodates a combined 30 mm entrance offset a
 
 Earlier recordings and results describe their recorded geometry. Check each manifest before comparing outcomes across this asset change.
 
+## Install uv
+
+On Linux or macOS, run the [official uv installer](https://docs.astral.sh/uv/getting-started/installation/):
+
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+On Windows, run this command in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Open a new terminal so the updated `PATH` takes effect. Check the installation:
+
+```sh
+uv --version
+```
+
+If you installed uv with the standalone installer, update uv itself with `uv self update`. For other installation methods, use the package manager that installed uv.
+
 ## Run an engagement
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/) once. After cloning, run this command from the repository root:
+After installing uv and cloning the repository, run this command from the repository root:
 
 ```sh
 uv run --locked python -m pallet_engagement run --seed 8 --duration 90
@@ -34,20 +56,68 @@ Native viewers require a graphical display and working graphics drivers. Video e
 
 The CC connector supports forward LSL, LSR, RSL, RSR, SL, and SR variants,
 plus stopped, supervisor-authorized 2.5 m straight withdrawal at a 0.4 m/s cruise cap, followed by those same
-forward families. It does not implement the full Reeds–Shepp set. The
-[geometric design](DESIGN_GEOMETRIC.md) defines the small-turn construction,
-finite search, actuator reserves, and measured limitations. Historical quintic
-results are labeled separately there.
+forward families. It does not implement the full Reeds–Shepp set.
 
 The final matched 90 s study scores 16/18 successes for CC and 16/18 for the
 quintic reference with the same fixed recovery policy, with zero CC contact.
 The six randomized cases remain 5/6 for CC versus 6/6 for that reference.
-Realtime engagement is not validated. See the
-[measured outcomes and limitations](DESIGN_GEOMETRIC.md#cc-runtime-validation).
+Realtime engagement is not validated.
 
 The JSON outcome reports physical success, contact, terminal errors, timing, and recording completeness. Deterministic mode pauses simulation during computation. Realtime mode paces physics against a monotonic clock and runs motion generation in a worker. A late or expired proposal triggers a checked braking continuation. Realtime performance requires separate measurement.
 
-## Vary the start and sensing
+## Install and update dependencies
+
+Run dependency commands from the repository root. To install all locked dependencies, including the optional analysis tools, use:
+
+```sh
+uv sync --locked --all-groups
+```
+
+Use this after pulling changes to bring `.venv` into sync with the repository. Regular `uv run --locked` commands install the runtime dependencies automatically. Add `--group analysis` when running analysis tools.
+
+To [upgrade all dependencies within the project's version constraints](https://docs.astral.sh/uv/concepts/projects/sync/#upgrading-locked-package-versions), update the lockfile and environment together:
+
+```sh
+uv sync --upgrade --all-groups
+```
+
+The direct dependencies in `pyproject.toml` currently use exact `==` pins. The upgrade command respects those pins. To upgrade those packages too, edit their pinned versions in `project.dependencies` and `dependency-groups.analysis`, then run the same command. uv resolves compatible dependencies for Python 3.12 and updates `uv.lock`.
+
+After changing direct dependency versions, update the matching pins in `requirements.txt` and `requirements-analysis.txt` for pip users. Check the dependency changes and run the tests:
+
+```sh
+git diff -- pyproject.toml uv.lock requirements.txt requirements-analysis.txt
+uv run --locked python -m unittest discover -s tests -v
+uv run --locked python -m pallet_engagement run --seed 8 --duration 90
+```
+
+Keep `pyproject.toml` and `uv.lock` together when saving dependency changes. `uv sync --locked --all-groups` installs the chosen versions; `uv sync --upgrade --all-groups` chooses newer compatible versions.
+
+## Run a specific scene
+
+Run these commands from the repository root. The bundled XML scene contains the forklift and pallet. Select their starting arrangement with `--scenario` or `--pose`.
+
+Use the centered `nominal` preset:
+
+```sh
+uv run --locked python -m pallet_engagement run --scenario nominal --seed 8 --duration 90 --record recordings/nominal-seed8
+```
+
+Use `comparison` for a randomized start. Keep the same seed to reproduce the starting pose and sensing sequence:
+
+```sh
+uv run --locked python -m pallet_engagement run --scenario comparison --seed 3 --duration 90 --record recordings/comparison-seed3
+```
+
+For a custom start, `--pose` overrides the preset. This example starts 3.2 m from the pallet face, with a 0.08 m lateral offset, 0.04 rad heading error, and 0.47 rad pallet yaw:
+
+```sh
+uv run --locked python -m pallet_engagement run --pose 3.2 .08 .04 .47 --seed 8 --duration 90 --record recordings/custom-scene
+```
+
+Each recording directory must be new. Change its name before repeating a command. To open the resulting run, use the MuJoCo or Rerun commands below and substitute that directory.
+
+### Vary sensing and recovery
 
 `--pose` supplies fork-tip distance, lateral offset, heading error, and pallet yaw. Distances are in metres and angles are in radians. `--ideal` disables detector noise, random dropouts, and sensor drift. Physical dynamics, actuation delay, slew limits, and scoring remain active.
 
@@ -62,36 +132,68 @@ uv run --locked python -m pallet_engagement run --seed 8 --outage-index 70 --out
 
 The close start exercises authorized withdrawal and reacquisition. Recovery still needs a checked retreat and forward continuation. Acquisition, clearance, freshness, proposal expiry, and retry limits remain active.
 
-## Inspect a recording
+## Open the MuJoCo viewer
+
+To watch the custom scene after its run finishes, open its recorded motion:
+
+```sh
+uv run --locked python -m pallet_engagement playback recordings/custom-scene
+```
+
+Playback restores the recorded joint poses at 25 Hz and the terminal pose. It requires a graphical display. On macOS, use MuJoCo's `mjpython` launcher:
+
+```sh
+uv run --locked mjpython -m pallet_engagement playback recordings/custom-scene
+```
+
+To inspect the bundled XML scene directly, open the standalone viewer:
+
+```sh
+uv run --locked python -m mujoco.viewer --mjcf=forklift_c.xml
+```
+
+On macOS, replace `python` with `mjpython`. The standalone viewer opens the XML's default arrangement. Use `playback` to view a run's chosen starting pose and controller motion.
+
+## Open Rerun
+
+Open a completed run's telemetry and 3D scene:
+
+```sh
+uv run --locked rerun recordings/custom-scene/trace.rrd
+```
+
+To open Rerun during execution, add `--live` and `--record` to the run command. Use a new recording directory:
+
+```sh
+uv run --locked python -m pallet_engagement run --pose 3.2 .08 .04 .47 --seed 8 --duration 90 --record recordings/custom-live --live
+```
+
+The launcher finds Rerun in the uv environment. No environment activation is required.
+
+Rerun shows the remaining joined path in green, the tracking prediction in orange, and the stopping path in red. The 3D view includes articulated meshes, pocket detections at capture time, and the estimated entry face. The 3D model uses evaluator truth for visualization. The controller consumes estimated observations through its declared messages.
+
+On this Linux workstation, use the X11 backend if the viewer has trouble under Wayland:
+
+```sh
+env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 uv run --locked rerun --bind 127.0.0.1 --window-size 1280x800 recordings/custom-scene/trace.rrd
+env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 uv run --locked python -m pallet_engagement run --seed 8 --duration 90 --record recordings/my-live-run --live
+```
+
+## Check a recording and export video
 
 ```sh
 uv run --locked python tools/geometric_evidence.py recordings/my-geometric-run
 uv run --locked python -m pallet_engagement replay recordings/my-geometric-run
 uv run --locked rerun rrd verify recordings/my-geometric-run/trace.rrd
-uv run --locked rerun recordings/my-geometric-run/trace.rrd
-uv run --locked python -m pallet_engagement playback recordings/my-geometric-run
 MUJOCO_GL=egl uv run --locked python -m pallet_engagement playback recordings/my-geometric-run --video recordings/my-geometric-run/scene.mp4
 ```
 
-The evidence command reconstructs pallet-plane crossings independently and pairs them with measured axle speed. Replay compares every archived estimate and covariance. Playback uses copied joint poses at 25 Hz and the terminal pose. On macOS, use MuJoCo's `mjpython` launcher for native playback.
-
-Rerun shows the remaining joined path in green, the tracking prediction in orange, and the stopping path in red. The 3D view includes articulated meshes, pocket detections at capture time, and the estimated entry face. The 3D model uses evaluator truth for visualization. The controller consumes estimated observations through its declared messages.
-
-Add `--live` to a recorded run to open Rerun and stream telemetry during execution.
-The launcher finds Rerun in the Python environment used to run the stack, so
-activating the virtual environment is optional. Use a new recording directory.
-
-```sh
-env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 uv run --locked python -m pallet_engagement run --seed 8 --duration 90 --record recordings/my-live-run --live
-```
-
-On this Linux workstation, the Rerun viewer can use the X11 backend with an explicit window size.
-
-```sh
-env -u WAYLAND_DISPLAY XDG_SESSION_TYPE=x11 uv run --locked rerun --bind 127.0.0.1 --window-size 1280x800 recordings/my-geometric-run/trace.rrd
-```
+The evidence command reconstructs pallet-plane crossings independently and pairs them with measured axle speed. Replay compares every archived estimate and covariance. Video export uses EGL on Linux and does not open a viewer.
 
 ## Evaluate repeated runs
+
+The [robustness study](ROBUSTNESS_STUDY.md) extends the archived results with new
+random starts and disturbance cases, without repeating successful episodes.
 
 ```sh
 uv run --locked python -m pallet_engagement evaluate --suite comparison --seeds 0:6 --duration 90
@@ -125,17 +227,9 @@ uv run --locked python -m unittest discover -s tests -v
 
 The hold diagnostic should end with `episode_timeout`, `settled`, and `recording_complete`. The original probe checks steering direction, centered insertion to 600 mm, and contact at a deliberately misaligned 80 mm offset. The tests cover geometry, sensing, estimation, supervision, tracking, recovery, recording, and visualization.
 
-Open the bundled scene on a machine with a graphical display.
-
-```sh
-uv run --locked python -m mujoco.viewer --mjcf=forklift_c.xml
-```
-
 ## Design and recovery
 
-- [Pipeline explanation for a beginner control engineer](PIPELINE.md)
-- [Geometric planning and pure-pursuit control](DESIGN_GEOMETRIC.md)
-- [Runtime, messages, sensing, safety, and evaluation](DESIGN_SCAFFOLDING.md)
+- [Architecture: components, interfaces, and rates](PIPELINE.md)
 - [First week on the real forklift](REAL_FORKLIFT_FIRST_WEEK.md)
 - [Recover the shelved methods and original working state](RECOVERY.md)
 

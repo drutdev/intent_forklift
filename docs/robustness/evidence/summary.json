@@ -1,0 +1,452 @@
+{
+  "cases": 130,
+  "successes": 116,
+  "contacts": 0,
+  "successes_within_60s": 109,
+  "retry_cases": 28,
+  "distinct_initial_poses": 68,
+  "original": {
+    "cases": 34,
+    "successes": 32
+  },
+  "extension": {
+    "cases": 96,
+    "successes": 84,
+    "contacts": 0,
+    "reasons": {
+      "success": 84,
+      "episode_timeout": 7,
+      "terminal_pose_error": 5
+    },
+    "groups": {
+      "combined": {
+        "cases": 16,
+        "successes": 14,
+        "contacts": 0,
+        "reasons": {
+          "success": 14,
+          "episode_timeout": 2
+        }
+      },
+      "control": {
+        "cases": 4,
+        "successes": 4,
+        "contacts": 0,
+        "reasons": {
+          "success": 4
+        }
+      },
+      "pose": {
+        "cases": 20,
+        "successes": 20,
+        "contacts": 0,
+        "reasons": {
+          "success": 20
+        }
+      },
+      "single": {
+        "cases": 24,
+        "successes": 22,
+        "contacts": 0,
+        "reasons": {
+          "success": 22,
+          "episode_timeout": 2
+        }
+      },
+      "novel_pose": {
+        "cases": 32,
+        "successes": 24,
+        "contacts": 0,
+        "reasons": {
+          "success": 24,
+          "episode_timeout": 3,
+          "terminal_pose_error": 5
+        }
+      }
+    },
+    "profiles": {
+      "combined-dropout-outage": {
+        "cases": 4,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3,
+          "episode_timeout": 1
+        }
+      },
+      "combined-noise-delay": {
+        "cases": 4,
+        "successes": 4,
+        "contacts": 0,
+        "reasons": {
+          "success": 4
+        }
+      },
+      "combined-noise-dropout": {
+        "cases": 4,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3,
+          "episode_timeout": 1
+        }
+      },
+      "combined-offset-noise-delay": {
+        "cases": 4,
+        "successes": 4,
+        "contacts": 0,
+        "reasons": {
+          "success": 4
+        }
+      },
+      "single-delay-230": {
+        "cases": 3,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3
+        }
+      },
+      "single-delay-270": {
+        "cases": 3,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3
+        }
+      },
+      "single-outage-5-10": {
+        "cases": 3,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3
+        }
+      },
+      "single-outage-70-10": {
+        "cases": 3,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3
+        }
+      },
+      "single-outage-70-5": {
+        "cases": 3,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3
+        }
+      },
+      "single-sensing-0.1-2": {
+        "cases": 3,
+        "successes": 3,
+        "contacts": 0,
+        "reasons": {
+          "success": 3
+        }
+      },
+      "single-sensing-0.3-1": {
+        "cases": 3,
+        "successes": 2,
+        "contacts": 0,
+        "reasons": {
+          "success": 2,
+          "episode_timeout": 1
+        }
+      },
+      "single-sensing-0.5-1": {
+        "cases": 3,
+        "successes": 2,
+        "contacts": 0,
+        "reasons": {
+          "success": 2,
+          "episode_timeout": 1
+        }
+      }
+    },
+    "complete_recordings": 89,
+    "replayed_estimates": 135885,
+    "failures": [
+      {
+        "case": "combined-dropout-outage-28",
+        "group": "combined",
+        "seed": 28,
+        "distance": 2.0,
+        "lateral": 0.0,
+        "heading": 0.0,
+        "pallet_yaw": 0.0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6100960226976166,
+        "lateral_mm": -19.07294309026905,
+        "yaw_deg": -2.105808096919815,
+        "retries": 0,
+        "overrides": "{\"acquiring\": 10, \"estimated_completion_pending\": 3404, \"stale_detection\": 115}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "combined-noise-dropout-28",
+        "group": "combined",
+        "seed": 28,
+        "distance": 2.0,
+        "lateral": 0.0,
+        "heading": 0.0,
+        "pallet_yaw": 0.0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6048204474446548,
+        "lateral_mm": -24.0883948794863,
+        "yaw_deg": -2.7371863057612855,
+        "retries": 0,
+        "overrides": "{\"acquiring\": 10, \"estimated_completion_pending\": 3355, \"stale_detection\": 36}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "single-sensing-0.3-1-28",
+        "group": "single",
+        "seed": 28,
+        "distance": 2.0,
+        "lateral": 0.0,
+        "heading": 0.0,
+        "pallet_yaw": 0.0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6091062675008683,
+        "lateral_mm": -22.577184160654074,
+        "yaw_deg": -2.2114611688633983,
+        "retries": 0,
+        "overrides": "{\"acquiring\": 10, \"estimated_completion_pending\": 3489, \"stale_detection\": 36}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "single-sensing-0.5-1-28",
+        "group": "single",
+        "seed": 28,
+        "distance": 2.0,
+        "lateral": 0.0,
+        "heading": 0.0,
+        "pallet_yaw": 0.0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6099002447591575,
+        "lateral_mm": -28.435675542410277,
+        "yaw_deg": -2.336658025995321,
+        "retries": 0,
+        "overrides": "{\"acquiring\": 10, \"estimated_completion_pending\": 3163, \"stale_detection\": 319}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-08",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 2.8,
+        "lateral": -0.45,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6122544678563955,
+        "lateral_mm": 17.245208132752598,
+        "yaw_deg": 2.49787686459302,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 3071}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-10",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 2.8,
+        "lateral": -0.15,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "terminal_pose_error",
+        "contact": false,
+        "settled": true,
+        "time_s": 27.200000000000003,
+        "depth_m": 0.6129835932079564,
+        "lateral_mm": 29.052251799567884,
+        "yaw_deg": 2.1744259025096047,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 27}",
+        "recording_complete": true,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 1361,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-16",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 3.2,
+        "lateral": -0.45,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6122476703168913,
+        "lateral_mm": 32.18802105758123,
+        "yaw_deg": 2.468199906563384,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 3113}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-20",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 3.2,
+        "lateral": 0.15,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "episode_timeout",
+        "contact": false,
+        "settled": true,
+        "time_s": 90.0,
+        "depth_m": 0.6123185544109528,
+        "lateral_mm": 32.55192468200555,
+        "yaw_deg": 2.4683753883322956,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 3097}",
+        "recording_complete": false,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 0,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-26",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 3.8,
+        "lateral": -0.15,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "terminal_pose_error",
+        "contact": false,
+        "settled": true,
+        "time_s": 34.22,
+        "depth_m": 0.6114813004504502,
+        "lateral_mm": 31.010170428859563,
+        "yaw_deg": 1.8406318853974617,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 21}",
+        "recording_complete": true,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 1712,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-28",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 3.8,
+        "lateral": 0.15,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "terminal_pose_error",
+        "contact": false,
+        "settled": true,
+        "time_s": 31.900000000000002,
+        "depth_m": 0.61234432269474,
+        "lateral_mm": 31.280492350198696,
+        "yaw_deg": 1.904502968207327,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 21}",
+        "recording_complete": true,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 1596,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-30",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 3.8,
+        "lateral": 0.45,
+        "heading": -0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "terminal_pose_error",
+        "contact": false,
+        "settled": true,
+        "time_s": 34.160000000000004,
+        "depth_m": 0.6108628964116316,
+        "lateral_mm": 33.39445993885387,
+        "yaw_deg": 1.9178954921256544,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 21}",
+        "recording_complete": true,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 1709,
+        "cohort": "extension"
+      },
+      {
+        "case": "new-pose-31",
+        "group": "novel_pose",
+        "seed": 32,
+        "distance": 3.8,
+        "lateral": 0.45,
+        "heading": 0.3141592653589793,
+        "pallet_yaw": 0,
+        "success": false,
+        "reason": "terminal_pose_error",
+        "contact": false,
+        "settled": true,
+        "time_s": 33.06,
+        "depth_m": 0.6130109221698996,
+        "lateral_mm": 33.05952178364524,
+        "yaw_deg": 1.9567089951649153,
+        "retries": 0,
+        "overrides": "{\"estimated_completion_pending\": 21}",
+        "recording_complete": true,
+        "intermediate_still_ticks": null,
+        "replayed_estimates": 1654,
+        "cohort": "extension"
+      }
+    ],
+    "reused": 16,
+    "skipped_successes": []
+  }
+}
