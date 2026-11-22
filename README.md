@@ -227,13 +227,10 @@ uv run --locked python -m unittest discover -s tests -v
 
 The hold diagnostic should end with `episode_timeout`, `settled`, and `recording_complete`. The original probe checks steering direction, centered insertion to 600 mm, and contact at a deliberately misaligned 80 mm offset. The tests cover geometry, sensing, estimation, supervision, tracking, recovery, recording, and visualization.
 
-## Design and recovery
+## Design
 
 - [Architecture: components, interfaces, and rates](PIPELINE.md)
 - [First week on the real forklift](REAL_FORKLIFT_FIRST_WEEK.md)
-- [Recover the shelved methods and original working state](RECOVERY.md)
-
-The inactive methods, their tests and design documents, conversion scripts, and unused legacy assets are preserved in local Git stashes. An archive branch retains the previous commit. Existing ignored recordings and the virtual environment remain untouched.
 
 ## Asset credits
 
